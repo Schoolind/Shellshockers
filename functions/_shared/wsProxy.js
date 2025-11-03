@@ -41,7 +41,7 @@ export async function handleProxyRequest(context, label = "Proxy") {
 
         for (let i = 0; i < Math.min(maxAttempts, shuffled.length); i++) {
             const backend = shuffled[i];
-            const backendUrl = `wss://${backend}/matchmaker/`;
+            const backendUrl = `https://${backend}/matchmaker/`;
             console.log(`[${label}] Attempt ${i + 1}: ${backendUrl}`);
 
             try {
