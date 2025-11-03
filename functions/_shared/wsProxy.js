@@ -91,6 +91,21 @@ export async function handleProxyRequest(context, label = "Proxy") {
                 });
 
                 server.accept();
+                // ---- keepalive to prevent idle reaping (CF Pages) ----
+                const KA_INTERVAL_MS = 25000; // 25s is safe under CF idle thresholds
+                const ka = setInterval(() => {
+                  try { server.send("ping"); } catch {}
+                  try {
+                    if (backendWs.readyState === WebSocket.OPEN) backendWs.send("ping");
+                  } catch {}
+                }, KA_INTERVAL_MS);
+  
+                const clearKA = () => { try { clearInterval(ka); } catch {} };
+                backendWs.addEventListener("close", clearKA);
+                server.addEventListener("close", clearKA);
+                backendWs.addEventListener("error", clearKA);
+                server.addEventListener("error", clearKA);
+
                 console.log(`[${label}] ✓ Connected to ${backend} for ${clientIP}`);
 
                 const headers = new Headers();
