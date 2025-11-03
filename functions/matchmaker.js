@@ -51,6 +51,7 @@ export async function onRequest(context) {
                 
                 const upstreamProtocols = selectedClientProto ? [selectedClientProto, token] : [token];
                 const backendWs = new WebSocket(backendUrl, upstreamProtocols);
+				backendWs.accept();
                 
                 const connected = await Promise.race([
                     new Promise((resolve) => {
