@@ -48,28 +48,25 @@ export async function onRequest(context) {
             try {
                 const backendUrl = `wss://${backend}/matchmaker/`;
                 console.log(`[Services]  Attempt ${i + 1}: ${backendUrl}`);
-                
+  
+                // Build upstream subprotocol header and open upstream using fetch+Upgrade
                 const upstreamProtocols = selectedClientProto ? [selectedClientProto, token] : [token];
-                const backendWs = new WebSocket(backendUrl, upstreamProtocols);
-				backendWs.accept();
-                
-                const connected = await Promise.race([
-                    new Promise((resolve) => {
-                        backendWs.addEventListener('open', () => resolve(true), { once: true });
-                        backendWs.addEventListener('error', (e) => {
-                            const msg = e?.message || (e?.error && e.error.message) || String(e);
-                            console.log('[Services]  WS error:', msg);
-                            resolve(false);
-                        }, { once: true });
-                    }),
-                    new Promise((resolve) => setTimeout(() => resolve(false), 8000))
-                ]);
-                
-                if (!connected) {
-                    backendWs.close();
-                    console.log('[Services]  Connection failed or timeout');
+                const swp = upstreamProtocols.join(', ');
+  
+                const resp = await fetch(backendUrl, {
+                    headers: {
+                        'Upgrade': 'websocket',
+                        'Sec-WebSocket-Protocol': swp
+                    }
+                });
+  
+                if (!resp.webSocket) {
+                    console.log('[Services]  Upstream handshake failed (no webSocket)');
                     continue;
                 }
+  
+                const backendWs = resp.webSocket;
+                backendWs.accept();
                 
                 const pair = new WebSocketPair();
                 const [client, server] = Object.values(pair);
