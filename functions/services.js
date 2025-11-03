@@ -1,109 +1,139 @@
 export async function onRequest(context) {
     const { request, env } = context;
     
-    // Validate environment
+    // Log the incoming request
+    console.log('[Services]  Request to:', request.url);
+    
     if (!env.HMAC_SECRET) {
-        console.error('[Services] HMAC_SECRET not configured');
+        console.error('[Services]  HMAC_SECRET not configured');
         return new Response('Server misconfigured', { status: 500 });
     }
     
     const upgradeHeader = request.headers.get('Upgrade');
+    
+    // Capture client-requested subprotocol (if any)
+    const clientProtoHeader = request.headers.get('sec-websocket-protocol') || '';
+    const clientProtocols = clientProtoHeader.split(',').map(s => s.trim()).filter(Boolean);
+    const selectedClientProto = clientProtocols[0] || null; // choose the first one if provided
+    
     if (!upgradeHeader || upgradeHeader !== 'websocket') {
+        console.log('[Services]  Not a WebSocket upgrade request');
         return new Response('Expected WebSocket', { status: 426 });
     }
 
-const backends = [
-  "dev.shellshock.io"
-];
+    const backends = [
+        "dev.shellshock.io"
+    ];
 
-    // Get real client IP from Cloudflare
     const clientIP = request.headers.get('CF-Connecting-IP');
     const country = request.headers.get('CF-IPCountry') || 'unknown';
     
     if (!clientIP) {
-        console.error('[Services] No CF-Connecting-IP header');
+        console.error('[Services]  No CF-Connecting-IP header');
         return new Response('Unable to determine client IP', { status: 500 });
     }
     
-    console.log(`[Services] Client ${clientIP} (${country})`);
+    console.log(`[Services]  Client ${clientIP} (${country})`);
     
-    // Create signed token with real IP
-    const token = await createAuthToken(clientIP, env.HMAC_SECRET);
-    
-    const shuffled = shuffleArray([...backends]);
-    const maxAttempts = 10;
-    
-    for (let i = 0; i < Math.min(maxAttempts, shuffled.length); i++) {
-        const backend = shuffled[i];
+    try {
+        const token = await createAuthToken(clientIP, env.HMAC_SECRET);
+        console.log(`[Services]  Token generated: ${token.substring(0, 20)}...`);
         
-        try {
-            const backendUrl = `wss://${backend}/matchmaker`;
-            console.log(`[Services] Attempt ${i + 1}: ${backendUrl}`);
+        const shuffled = shuffleArray([...backends]);
+        const maxAttempts = 10;
+        
+        for (let i = 0; i < Math.min(maxAttempts, shuffled.length); i++) {
+            const backend = shuffled[i];
             
-            // Pass token via Sec-WebSocket-Protocol
-            const backendWs = new WebSocket(backendUrl, [token]);
-            
-            const connected = await Promise.race([
-                new Promise((resolve) => {
-                    backendWs.addEventListener('open', () => resolve(true), { once: true });
-                    backendWs.addEventListener('error', () => resolve(false), { once: true });
-                }),
-                new Promise((resolve) => setTimeout(() => resolve(false), 3000))
-            ]);
-            
-            if (!connected) {
-                backendWs.close();
-                throw new Error('timeout');
-            }
-            
-            const pair = new WebSocketPair();
-            const [client, server] = Object.values(pair);
-            
-            // Forward messages backend → client
-            backendWs.addEventListener('message', (event) => {
-                try {
-                    server.send(event.data);
-                } catch (e) {}
-            });
-            
-            // Forward messages client → backend
-            server.addEventListener('message', (event) => {
-                try {
-                    if (backendWs.readyState === WebSocket.OPEN) {
-                        backendWs.send(event.data);
+            try {
+                const backendUrl = `wss://${backend}/matchmaker/`;
+                console.log(`[Services]  Attempt ${i + 1}: ${backendUrl}`);
+                
+                const upstreamProtocols = selectedClientProto ? [selectedClientProto, token] : [token];
+                const backendWs = new WebSocket(backendUrl, upstreamProtocols);
+                
+                const connected = await Promise.race([
+                    new Promise((resolve) => {
+                        backendWs.addEventListener('open', () => resolve(true), { once: true });
+                        backendWs.addEventListener('error', (e) => {
+                            const msg = e?.message || (e?.error && e.error.message) || String(e);
+                            console.log('[Services]  WS error:', msg);
+                            resolve(false);
+                        }, { once: true });
+                    }),
+                    new Promise((resolve) => setTimeout(() => resolve(false), 8000))
+                ]);
+                
+                if (!connected) {
+                    backendWs.close();
+                    console.log('[Services]  Connection failed or timeout');
+                    continue;
+                }
+                
+                const pair = new WebSocketPair();
+                const [client, server] = Object.values(pair);
+                
+                backendWs.addEventListener('message', (event) => {
+                    try {
+                        server.send(event.data);
+                    } catch (e) {
+                        console.error('[Services]  Error forwarding to client:', e.message);
                     }
-                } catch (e) {}
-            });
-            
-            // Handle closes
-            backendWs.addEventListener('close', (event) => {
-                try {
-                    server.close(event.code, event.reason);
-                } catch (e) {}
-            });
-            
-            server.addEventListener('close', (event) => {
-                try {
-                    backendWs.close(event.code, event.reason);
-                } catch (e) {}
-            });
-            
-            server.accept();
-            
-            console.log(`[Services] ✓ Connected to ${backend} for ${clientIP}`);
-            
-            return new Response(null, {
-                status: 101,
-                webSocket: client,
-            });
-            
-        } catch (error) {
-            console.error(`[Services] ✗ ${backend}:`, error.message);
-            continue;
+                });
+                
+                server.addEventListener('message', (event) => {
+                    try {
+                        if (backendWs.readyState === WebSocket.OPEN) {
+                            backendWs.send(event.data);
+                        }
+                    } catch (e) {
+                        console.error('[Services]  Error forwarding to backend:', e.message);
+                    }
+                });
+                
+                backendWs.addEventListener('close', (event) => {
+                    console.log(`[Services]  Backend closed: ${event.code} ${event.reason}`);
+                    try {
+                        server.close(event.code, event.reason);
+                    } catch (e) {}
+                });
+                
+                server.addEventListener('close', (event) => {
+                    console.log(`[Services]  Client closed: ${event.code} ${event.reason}`);
+                    try {
+                        backendWs.close(event.code, event.reason);
+                    } catch (e) {}
+                });
+                
+                server.accept();
+                
+                console.log(`[Services]  ✓ Connected to ${backend} for ${clientIP}`);
+                
+                const responseHeaders = new Headers();
+                if (selectedClientProto) {
+                    // Echo one selected subprotocol back to the client per RFC 6455
+                    responseHeaders.set('Sec-WebSocket-Protocol', selectedClientProto);
+                }
+
+                return new Response(null, {
+                    status: 101,
+                    webSocket: client,
+                    headers: responseHeaders,
+                });
+                
+            } catch (error) {
+                console.error(`[Services]  ✗ ${backend}:`, error.message, error.stack);
+                continue;
+            }
         }
+        
+        console.error('[Services]  All backends failed');
+        return new Response('All backends failed', { status: 503 });
+        
+    } catch (error) {
+        console.error('[Services]  Fatal error:', error.message, error.stack);
+        return new Response('Internal server error', { status: 500 });
     }
-    
-    return new Response('All backends failed', { status: 503 });
 }
 
 async function createAuthToken(ip, secret) {
@@ -129,7 +159,17 @@ async function createAuthToken(ip, secret) {
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
     
-    return btoa(`${data}|${sigHex}`);
+    const token = `${data}|${sigHex}`;
+    
+    return base64urlEncode(token);  // ✅ Use base64url
+}
+
+function base64urlEncode(str) {
+    const base64 = btoa(str);
+    return base64
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
 }
 
 function shuffleArray(array) {
