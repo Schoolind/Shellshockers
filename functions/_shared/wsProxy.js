@@ -55,21 +55,26 @@ export async function handleProxyRequest(context, label = "Proxy") {
     const cookies = parseCookies(request.headers.get('Cookie'));
     const forcedUp = reqUrl.searchParams.get('up'); // for testing, e.g. ?up=dev.shellshock.io
 
-    const allowlist = [
-        "dev.shellshock.io"
-        // add more as you roll out
-    ];
+	function isValidBackend(host) {
+		if (!host) return false;
+		if (host === 'dev.shellshock.io') return true;
+		// Allow game cluster subdomains: egs-static-dev-uswest-z6w70a8.shellshock.io, etc.
+		return /^egs-[a-z0-9-]+\.shellshock\.io$/.test(host);
+	}
+	
+	const allowlist = [
+		"dev.shellshock.io"
+	];
+	
+	const sticky = forcedUp || cookies['ws_upstream'] || '';
 
-    // Start with allowlist; if cookie or ?up= present and allowed, put it first
-    const sticky = forcedUp || cookies['ws_upstream'] || '';
-    const backends = allowlist.slice();
-    if (sticky && allowlist.includes(sticky)) {
-      const idx = backends.indexOf(sticky);
-      if (idx > 0) {
-        backends.splice(idx, 1);
-        backends.unshift(sticky);
-      }
-    }
+	// If ?up= or cookie specifies a valid backend, use it first
+	let backends;  // ← Declare OUTSIDE the if/else
+	if (sticky && isValidBackend(sticky)) {
+		backends = [sticky, ...allowlist.filter(b => b !== sticky)];
+	} else {
+		backends = allowlist.slice();
+	}
 
     try {
         const token = await createAuthToken(clientIP, env.HMAC_SECRET);
