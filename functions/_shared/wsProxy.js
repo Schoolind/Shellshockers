@@ -2,9 +2,17 @@ export async function handleProxyRequest(context, label = "Proxy") {
     const { request, env } = context;
 
     const reqUrl = new URL(request.url);
-    // Decide upstream path based on the incoming route; default to matchmaker
-    const routePath = reqUrl.pathname.startsWith('/services') ? '/services/' : '/matchmaker/';
+
+    // Decide upstream path from incoming route. Default to /matchmaker/.
+    let routePath = '/matchmaker/';
+    if (reqUrl.pathname.startsWith('/services')) routePath = '/services/';
+    else if (reqUrl.pathname.startsWith('/game')) routePath = '/game/';
+
+    // services is transactional (open → one reply → close), others are long-lived
     const isTransactional = routePath === '/services/';
+
+    // Attach HMAC token to subprotocols for matchmaker/services only (not for game)
+    const attachToken = routePath !== '/game/';
 
     console.log(`[${label}] Request to:`, request.url);
 
@@ -33,9 +41,35 @@ export async function handleProxyRequest(context, label = "Proxy") {
 
     console.log(`[${label}] Client ${clientIP} (${country})`);
 
-	const backends = [
-		"dev.shellshock.io"
-	];
+    // Sticky upstream: allow pinning to a chosen backend via cookie or query param
+    function parseCookies(header) {
+      return (header || '').split(';').reduce((acc, part) => {
+        const i = part.indexOf('=');
+        if (i === -1) return acc;
+        const k = part.slice(0, i).trim();
+        const v = part.slice(i + 1).trim();
+        if (k) acc[k] = v;
+        return acc;
+      }, {});
+    }
+    const cookies = parseCookies(request.headers.get('Cookie'));
+    const forcedUp = reqUrl.searchParams.get('up'); // for testing, e.g. ?up=dev.shellshock.io
+
+    const allowlist = [
+        "dev.shellshock.io"
+        // add more as you roll out
+    ];
+
+    // Start with allowlist; if cookie or ?up= present and allowed, put it first
+    const sticky = forcedUp || cookies['ws_upstream'] || '';
+    const backends = allowlist.slice();
+    if (sticky && allowlist.includes(sticky)) {
+      const idx = backends.indexOf(sticky);
+      if (idx > 0) {
+        backends.splice(idx, 1);
+        backends.unshift(sticky);
+      }
+    }
 
     try {
         const token = await createAuthToken(clientIP, env.HMAC_SECRET);
@@ -50,7 +84,13 @@ export async function handleProxyRequest(context, label = "Proxy") {
             console.log(`[${label}] Attempt ${i + 1}: ${backendUrl}`);
 
             try {
-                const upstreamProtocols = selectedClientProto ? [selectedClientProto, token] : [token];
+                let upstreamProtocols;
+                if (attachToken) {
+                  upstreamProtocols = selectedClientProto ? [selectedClientProto, token] : [token];
+                } else {
+                  // game: pass through only the browser-requested subprotocol (if any)
+                  upstreamProtocols = selectedClientProto ? [selectedClientProto] : [];
+                }
                 const swp = upstreamProtocols.join(", ");
 
                 const resp = await fetch(backendUrl, {
@@ -129,6 +169,9 @@ export async function handleProxyRequest(context, label = "Proxy") {
                 const headers = new Headers();
                 if (selectedClientProto)
                     headers.set("Sec-WebSocket-Protocol", selectedClientProto);
+
+                // Persist chosen backend for this browser for 30 minutes
+                headers.append("Set-Cookie", `ws_upstream=${backend}; Path=/; Max-Age=1800; Secure; HttpOnly; SameSite=None`);
 
                 return new Response(null, { status: 101, webSocket: client, headers });
 
