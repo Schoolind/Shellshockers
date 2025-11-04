@@ -74,6 +74,10 @@ export async function handleProxyRequest(context, label = "Proxy") {
                 let repliedOnce = false;
 
                 backendWs.addEventListener("message", (event) => {
+                    // Do not forward control keepalives to the browser
+                    if (typeof event.data === "string" && (event.data === "ping" || event.data === "pong")) {
+                        return;
+                    }
                     try { server.send(event.data); }
                     catch (e) { console.error(`[${label}] Error forwarding to client:`, e.message); }
 
@@ -111,7 +115,6 @@ export async function handleProxyRequest(context, label = "Proxy") {
                 if (!isTransactional) {
                   const KA_INTERVAL_MS = 25000;
                   const ka = setInterval(() => {
-                    try { server.send("ping"); } catch {}
                     try { if (backendWs.readyState === WebSocket.OPEN) backendWs.send("ping"); } catch {}
                   }, KA_INTERVAL_MS);
                   const clearKA = () => { try { clearInterval(ka); } catch {} };
