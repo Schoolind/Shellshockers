@@ -1,6 +1,11 @@
 export async function handleProxyRequest(context, label = "Proxy") {
     const { request, env } = context;
 
+    const reqUrl = new URL(request.url);
+    // Decide upstream path based on the incoming route; default to matchmaker
+    const routePath = reqUrl.pathname.startsWith('/services') ? '/services/' : '/matchmaker/';
+    const isTransactional = routePath === '/services/';
+
     console.log(`[${label}] Request to:`, request.url);
 
     if (!env.HMAC_SECRET) {
@@ -41,7 +46,7 @@ export async function handleProxyRequest(context, label = "Proxy") {
 
         for (let i = 0; i < Math.min(maxAttempts, shuffled.length); i++) {
             const backend = shuffled[i];
-            const backendUrl = `https://${backend}/matchmaker/`;
+            const backendUrl = `https://${backend}${routePath}`;
             console.log(`[${label}] Attempt ${i + 1}: ${backendUrl}`);
 
             try {
@@ -66,9 +71,20 @@ export async function handleProxyRequest(context, label = "Proxy") {
                 const pair = new WebSocketPair();
                 const [client, server] = Object.values(pair);
 
+                let repliedOnce = false;
+
                 backendWs.addEventListener("message", (event) => {
                     try { server.send(event.data); }
                     catch (e) { console.error(`[${label}] Error forwarding to client:`, e.message); }
+
+                    if (isTransactional && !repliedOnce) {
+                      repliedOnce = true;
+                      // Allow the frame to flush, then close both ends with a clean code.
+                      setTimeout(() => {
+                        try { server.close(1000, "ok"); } catch {}
+                        try { backendWs.close(1000, "ok"); } catch {}
+                      }, 0);
+                    }
                 });
 
                 server.addEventListener("message", (event) => {
@@ -91,20 +107,19 @@ export async function handleProxyRequest(context, label = "Proxy") {
                 });
 
                 server.accept();
-                // ---- keepalive to prevent idle reaping (CF Pages) ----
-                const KA_INTERVAL_MS = 25000; // 25s is safe under CF idle thresholds
-                const ka = setInterval(() => {
-                  try { server.send("ping"); } catch {}
-                  try {
-                    if (backendWs.readyState === WebSocket.OPEN) backendWs.send("ping");
-                  } catch {}
-                }, KA_INTERVAL_MS);
-  
-                const clearKA = () => { try { clearInterval(ka); } catch {} };
-                backendWs.addEventListener("close", clearKA);
-                server.addEventListener("close", clearKA);
-                backendWs.addEventListener("error", clearKA);
-                server.addEventListener("error", clearKA);
+
+                if (!isTransactional) {
+                  const KA_INTERVAL_MS = 25000;
+                  const ka = setInterval(() => {
+                    try { server.send("ping"); } catch {}
+                    try { if (backendWs.readyState === WebSocket.OPEN) backendWs.send("ping"); } catch {}
+                  }, KA_INTERVAL_MS);
+                  const clearKA = () => { try { clearInterval(ka); } catch {} };
+                  backendWs.addEventListener("close", clearKA);
+                  server.addEventListener("close", clearKA);
+                  backendWs.addEventListener("error", clearKA);
+                  server.addEventListener("error", clearKA);
+                }
 
                 console.log(`[${label}] ✓ Connected to ${backend} for ${clientIP}`);
 
