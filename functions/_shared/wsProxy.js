@@ -118,32 +118,37 @@ export async function handleProxyRequest(context, label = "Proxy") {
 
                 let repliedOnce = false;
 
-                backendWs.addEventListener("message", (event) => {
-                    // Do not forward control keepalives to the browser
-                    if (typeof event.data === "string" && (event.data === "ping" || event.data === "pong")) {
-                        return;
-                    }
-                    try { server.send(event.data); }
-                    catch (e) { console.error(`[${label}] Error forwarding to client:`, e.message); }
-
-                    if (isTransactional && !repliedOnce) {
-                      repliedOnce = true;
-                      // Allow the frame to flush, then close both ends with a clean code.
-                      setTimeout(() => {
-                        try { server.close(1000, "ok"); } catch {}
-                        try { backendWs.close(1000, "ok"); } catch {}
-                      }, 0);
-                    }
-                });
-
-                server.addEventListener("message", (event) => {
-                    try {
-                        if (backendWs.readyState === WebSocket.OPEN)
-                            backendWs.send(event.data);
-                    } catch (e) {
-                        console.error(`[${label}] Error forwarding to backend:`, e.message);
-                    }
-                });
+				backendWs.addEventListener("message", (event) => {
+					console.log(`[${label}] Backend sent:`, typeof event.data, event.data);
+					
+					// Do not forward control keepalives to the browser
+					if (typeof event.data === "string" && (event.data === "ping" || event.data === "pong")) {
+						console.log(`[${label}] Blocked keepalive:`, event.data);
+						return;
+					}
+					
+					console.log(`[${label}] Forwarding to client:`, event.data);
+					try { server.send(event.data); }
+					catch (e) { console.error(`[${label}] Error forwarding to client:`, e.message); }
+					
+					if (isTransactional && !repliedOnce) {
+					  repliedOnce = true;
+					  setTimeout(() => {
+						try { server.close(1000, "ok"); } catch {}
+						try { backendWs.close(1000, "ok"); } catch {}
+					  }, 0);
+					}
+				});
+				
+				server.addEventListener("message", (event) => {
+					console.log(`[${label}] Client sent:`, typeof event.data, event.data);
+					try {
+						if (backendWs.readyState === WebSocket.OPEN)
+							backendWs.send(event.data);
+					} catch (e) {
+						console.error(`[${label}] Error forwarding to backend:`, e.message);
+					}
+				});
 
                 backendWs.addEventListener("close", (event) => {
                     console.log(`[${label}] Backend closed: ${event.code} ${event.reason}`);
