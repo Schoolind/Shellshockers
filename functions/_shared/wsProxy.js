@@ -157,17 +157,17 @@ export async function handleProxyRequest(context, label = "Proxy") {
 
                 server.accept();
 
-                if (!isTransactional) {
-                  const KA_INTERVAL_MS = 25000;
-                  const ka = setInterval(() => {
-                    try { if (backendWs.readyState === WebSocket.OPEN) backendWs.send("ping"); } catch {}
-                  }, KA_INTERVAL_MS);
-                  const clearKA = () => { try { clearInterval(ka); } catch {} };
-                  backendWs.addEventListener("close", clearKA);
-                  server.addEventListener("close", clearKA);
-                  backendWs.addEventListener("error", clearKA);
-                  server.addEventListener("error", clearKA);
-                }
+                // if (!isTransactional) {
+                //   const KA_INTERVAL_MS = 25000;
+                //   const ka = setInterval(() => {
+                //     try { if (backendWs.readyState === WebSocket.OPEN) backendWs.send("ping"); } catch {}
+                //   }, KA_INTERVAL_MS);
+                //   const clearKA = () => { try { clearInterval(ka); } catch {} };
+                //   backendWs.addEventListener("close", clearKA);
+                //   server.addEventListener("close", clearKA);
+                //   backendWs.addEventListener("error", clearKA);
+                //   server.addEventListener("error", clearKA);
+                // }
 
                 console.log(`[${label}] ✓ Connected to ${backend} for ${clientIP}`);
 
