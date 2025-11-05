@@ -118,6 +118,16 @@ export async function handleProxyRequest(context, label = "Proxy") {
 
                 let repliedOnce = false;
 
+				if (routePath === '/game/') {
+					try {
+						if (backendWs.readyState === WebSocket.OPEN) {
+							backendWs.send('ping');
+						}
+					} catch (e) {
+						console.error(`[${label}] Failed to send initial ping:`, e.message);
+					}
+				}
+
 				backendWs.addEventListener("message", (event) => {
 					console.log(`[${label}] Backend sent:`, typeof event.data, event.data);
 					
