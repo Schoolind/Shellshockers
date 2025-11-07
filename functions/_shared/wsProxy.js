@@ -11,8 +11,8 @@ export async function handleProxyRequest(context, label = "Proxy") {
     // services is transactional (open → one reply → close), others are long-lived
     const isTransactional = routePath === '/services/';
 
-    // Attach HMAC token to subprotocols for matchmaker/services only (not for game)
-    const attachToken = routePath !== '/game/';
+    // Attach HMAC token to subprotocols for ALL routes (matchmaker, services, game)
+    const attachToken = true;
 
     console.log(`[${label}] Request to:`, request.url);
 
@@ -52,29 +52,30 @@ export async function handleProxyRequest(context, label = "Proxy") {
         return acc;
       }, {});
     }
+
     const cookies = parseCookies(request.headers.get('Cookie'));
     const forcedUp = reqUrl.searchParams.get('up'); // for testing, e.g. ?up=dev.shellshock.io
 
-	function isValidBackend(host) {
-		if (!host) return false;
-		if (host === 'dev.shellshock.io') return true;
-		// Allow game cluster subdomains: egs-static-dev-uswest-z6w70a8.shellshock.io, etc.
-		return /^egs-[a-z0-9-]+\.shellshock\.io$/.test(host);
-	}
-	
-	const allowlist = [
-		"dev.shellshock.io"
-	];
-	
-	const sticky = forcedUp || cookies['ws_upstream'] || '';
+    function isValidBackend(host) {
+        if (!host) return false;
+        if (host === 'dev.shellshock.io') return true;
+        // Allow game cluster subdomains: egs-static-dev-uswest-z6w70a8.shellshock.io, etc.
+        return /^egs-[a-z0-9-]+\.shellshock\.io$/.test(host);
+    }
+    
+    const allowlist = [
+        "dev.shellshock.io"
+    ];
+    
+    const sticky = forcedUp || cookies['ws_upstream'] || '';
 
-	// If ?up= or cookie specifies a valid backend, use it first
-	let backends;  // ← Declare OUTSIDE the if/else
-	if (sticky && isValidBackend(sticky)) {
-		backends = [sticky, ...allowlist.filter(b => b !== sticky)];
-	} else {
-		backends = allowlist.slice();
-	}
+    // If ?up= or cookie specifies a valid backend, use it first
+    let backends;
+    if (sticky && isValidBackend(sticky)) {
+        backends = [sticky, ...allowlist.filter(b => b !== sticky)];
+    } else {
+        backends = allowlist.slice();
+    }
 
     try {
         const token = await createAuthToken(clientIP, env.HMAC_SECRET);
@@ -89,21 +90,17 @@ export async function handleProxyRequest(context, label = "Proxy") {
             console.log(`[${label}] Attempt ${i + 1}: ${backendUrl}`);
 
             try {
-                let upstreamProtocols;
-                if (attachToken) {
-                  upstreamProtocols = selectedClientProto ? [selectedClientProto, token] : [token];
-                } else {
-                  // game: pass through only the browser-requested subprotocol (if any)
-                  upstreamProtocols = selectedClientProto ? [selectedClientProto] : [];
+                // Always include the HMAC token; prepend any client-requested subprotocol.
+                const upstreamProtocols = attachToken
+                    ? (selectedClientProto ? [selectedClientProto, token] : [token])
+                    : (selectedClientProto ? [selectedClientProto] : []);
+                
+                const headersInit = { "Upgrade": "websocket" };
+                if (upstreamProtocols.length) {
+                    headersInit["Sec-WebSocket-Protocol"] = upstreamProtocols.join(", ");
                 }
-                const swp = upstreamProtocols.join(", ");
 
-                const resp = await fetch(backendUrl, {
-                    headers: {
-                        "Upgrade": "websocket",
-                        "Sec-WebSocket-Protocol": swp,
-                    },
-                });
+                const resp = await fetch(backendUrl, { headers: headersInit });
 
                 if (!resp.webSocket) {
                     console.log(`[${label}] Upstream handshake failed (no webSocket)`);
@@ -118,47 +115,47 @@ export async function handleProxyRequest(context, label = "Proxy") {
 
                 let repliedOnce = false;
 
-				if (routePath === '/game/') {
-					try {
-						if (backendWs.readyState === WebSocket.OPEN) {
-							backendWs.send('ping');
-						}
-					} catch (e) {
-						console.error(`[${label}] Failed to send initial ping:`, e.message);
-					}
-				}
+                if (routePath === '/game/') {
+                    try {
+                        if (backendWs.readyState === WebSocket.OPEN) {
+                            backendWs.send('ping');
+                        }
+                    } catch (e) {
+                        console.error(`[${label}] Failed to send initial ping:`, e.message);
+                    }
+                }
 
-				backendWs.addEventListener("message", (event) => {
-					console.log(`[${label}] Backend sent:`, typeof event.data, event.data);
-					
-					// Do not forward control keepalives to the browser
-					if (typeof event.data === "string" && (event.data === "ping" || event.data === "pong")) {
-						console.log(`[${label}] Blocked keepalive:`, event.data);
-						return;
-					}
-					
-					console.log(`[${label}] Forwarding to client:`, event.data);
-					try { server.send(event.data); }
-					catch (e) { console.error(`[${label}] Error forwarding to client:`, e.message); }
-					
-					if (isTransactional && !repliedOnce) {
-					  repliedOnce = true;
-					  setTimeout(() => {
-						try { server.close(1000, "ok"); } catch {}
-						try { backendWs.close(1000, "ok"); } catch {}
-					  }, 0);
-					}
-				});
-				
-				server.addEventListener("message", (event) => {
-					console.log(`[${label}] Client sent:`, typeof event.data, event.data);
-					try {
-						if (backendWs.readyState === WebSocket.OPEN)
-							backendWs.send(event.data);
-					} catch (e) {
-						console.error(`[${label}] Error forwarding to backend:`, e.message);
-					}
-				});
+                backendWs.addEventListener("message", (event) => {
+                    console.log(`[${label}] Backend sent:`, typeof event.data, event.data);
+                    
+                    // Do not forward control keepalives to the browser
+                    if (typeof event.data === "string" && (event.data === "ping" || event.data === "pong")) {
+                        console.log(`[${label}] Blocked keepalive:`, event.data);
+                        return;
+                    }
+                    
+                    console.log(`[${label}] Forwarding to client:`, event.data);
+                    try { server.send(event.data); }
+                    catch (e) { console.error(`[${label}] Error forwarding to client:`, e.message); }
+                    
+                    if (isTransactional && !repliedOnce) {
+                        repliedOnce = true;
+                        setTimeout(() => {
+                            try { server.close(1000, "ok"); } catch {}
+                            try { backendWs.close(1000, "ok"); } catch {}
+                        }, 0);
+                    }
+                });
+                
+                server.addEventListener("message", (event) => {
+                    console.log(`[${label}] Client sent:`, typeof event.data, event.data);
+                    try {
+                        if (backendWs.readyState === WebSocket.OPEN)
+                            backendWs.send(event.data);
+                    } catch (e) {
+                        console.error(`[${label}] Error forwarding to backend:`, e.message);
+                    }
+                });
 
                 backendWs.addEventListener("close", (event) => {
                     console.log(`[${label}] Backend closed: ${event.code} ${event.reason}`);
@@ -172,23 +169,13 @@ export async function handleProxyRequest(context, label = "Proxy") {
 
                 server.accept();
 
-                // if (!isTransactional) {
-                //   const KA_INTERVAL_MS = 25000;
-                //   const ka = setInterval(() => {
-                //     try { if (backendWs.readyState === WebSocket.OPEN) backendWs.send("ping"); } catch {}
-                //   }, KA_INTERVAL_MS);
-                //   const clearKA = () => { try { clearInterval(ka); } catch {} };
-                //   backendWs.addEventListener("close", clearKA);
-                //   server.addEventListener("close", clearKA);
-                //   backendWs.addEventListener("error", clearKA);
-                //   server.addEventListener("error", clearKA);
-                // }
-
                 console.log(`[${label}] ✓ Connected to ${backend} for ${clientIP}`);
 
                 const headers = new Headers();
-                if (selectedClientProto)
+                // Echo ONLY the client's subprotocol back to the browser (never the token)
+                if (selectedClientProto) {
                     headers.set("Sec-WebSocket-Protocol", selectedClientProto);
+                }
 
                 // Persist chosen backend for this browser for 30 minutes
                 headers.append("Set-Cookie", `ws_upstream=${backend}; Path=/; Max-Age=1800; Secure; HttpOnly; SameSite=None`);
