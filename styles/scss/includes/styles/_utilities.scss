@@ -65,6 +65,11 @@
 	--twitch-dk-purple: #40008F;
 	--twitch-xtr-dk-purple: #1e0043;
 
+    --cg-brand-80: #8668ff;
+    --cg-brand-100: #6842ff;
+    --cg-brand-120: #5335cc;
+	--cg-brand-bg: rgba(33, 34, 51, 1);
+
 	--egg-pack-small-bg: linear-gradient(146deg, rgba(2,0,36,1) 0%, rgba(255,255,255,1) 0%, rgba(0,249,255,1) 50%);
 	--egg-pack-md-bg: linear-gradient(146deg, rgba(2,0,36,1) 0%, rgba(255,255,255,1) 0%, rgba(216,158,252,1) 50%);
 	--egg-pack-lg-bg: linear-gradient(146deg, rgba(2,0,36,1) 0%, rgba(255,255,255,1) 0%, rgba(252,174,201,1) 50%);
@@ -306,6 +311,10 @@ h4.shaded {
 	width: 90%;
 	text-align: center;
 	margin: var(--ss-space-md) 0;
+}
+
+.font-size-sm {
+	font-size: var(--ss-space-sm);
 }
 
 .font-size-md {

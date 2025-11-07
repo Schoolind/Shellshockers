@@ -16,6 +16,9 @@ var vueData = {
 	checkProducts: 0,
 
     firebaseId: null,
+    id: null,
+	cgCreatedAccount: false,
+	cgUser: false,
     photoUrl: null,
     maskedEmail: null,
     isEmailVerified: false,
@@ -790,8 +793,8 @@ var vueData = {
 	},
 
     genericMessagePopup: {
-        titleLocKey: 'keybindings_right',
-        contentLocKey: 'p_popup_chicken_nuggetbutton',
+        titleLocKey: 'uh_oh',
+        contentLocKey: 'purchase_disabled',
         confirmLocKey: 'ok'
     },
 
@@ -1092,5 +1095,20 @@ var vueData = {
 			// {id: 'screens-menu-btn-return', locKey: 'ab_test_back_to_game', scroll: false, setting: 'grenade'},
 		],
 		currentIdx: 0,
+	},
+	crazyGamesUser: {
+		hasAccount: false,
+		hasLinked: false,
+		username: '',
+		profilePictureUrl: '',
+		userLoggedIn: false,
+		isAnonymous: true,
+	},
+	reAuthPassword: {
+		showPasswordModal: false,
+		firebasePasswordReauthEmail: '',
+		firebasePasswordReauthPassword: '',
+		_pwResolve: null,
+		_pwReject: null,
 	},
 }
