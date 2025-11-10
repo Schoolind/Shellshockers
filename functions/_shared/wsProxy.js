@@ -55,8 +55,19 @@ export async function handleProxyRequest(context, label = "Proxy") {
       }, {});
     }
 
-    const cookies = parseCookies(request.headers.get('Cookie'));
-    const forcedUp = reqUrl.searchParams.get('up'); // for testing, e.g. ?up=dev.shellshock.io
+	const cookies = parseCookies(request.headers.get('Cookie'));
+	// normalize host from ?up or cookie: strip scheme, path, port, fragments
+	const normalizeHost = (h) => {
+		if (!h) return '';
+		let s = String(h).trim();
+		s = s.replace(/^[a-z]+:\/\//i, ''); // remove scheme
+		s = s.replace(/[/?#].*$/, '');      // remove path/query/fragment
+		s = s.replace(/:\d+$/, '');         // remove port
+		return s;
+		};
+
+	const forcedUp = normalizeHost(reqUrl.searchParams.get('up')); // e.g. ?up=egs-...deathegg.life
+	const cookieUp = normalizeHost(cookies['ws_upstream']);
 
     // CHANGE: validate against allowlist domains and their subdomains (no hardcoded patterns)
     function isValidBackend(host) {
@@ -82,7 +93,7 @@ export async function handleProxyRequest(context, label = "Proxy") {
         "dev.shellshock.io"
     ];
 
-    const sticky = forcedUp || cookies['ws_upstream'] || '';
+    const sticky = forcedUp || cookieUp || '';
 
     // If ?up= or cookie specifies a valid backend, use it first
     let backends;
