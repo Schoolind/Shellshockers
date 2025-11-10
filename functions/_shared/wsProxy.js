@@ -126,6 +126,12 @@ export async function handleProxyRequest(context, label = "Proxy") {
                     headersInit["Sec-WebSocket-Protocol"] = upstreamProtocols.join(", ");
                 }
 
+				// Forward extensions & origin so upstream can complete strict handshakes
+				const ext = request.headers.get("sec-websocket-extensions");
+				if (ext) headersInit["Sec-WebSocket-Extensions"] = ext;
+				const origin = request.headers.get("origin");
+				if (origin) headersInit["Origin"] = origin;
+
                 const resp = await fetch(backendUrl, { headers: headersInit });
 
                 if (!resp.webSocket) {
