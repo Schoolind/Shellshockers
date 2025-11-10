@@ -6,7 +6,9 @@ export async function handleProxyRequest(context, label = "Proxy") {
     // Decide upstream path from incoming route. Default to /matchmaker/.
     let routePath = '/matchmaker/';
     if (reqUrl.pathname.startsWith('/services')) routePath = '/services/';
-    else if (reqUrl.pathname.startsWith('/game')) routePath = '/game/';
+	else if (reqUrl.pathname.startsWith('/game/')) {  // <-- ADD TRAILING SLASH
+		routePath = reqUrl.pathname;  // Preserve full path: /game/four-save-jets
+	}
 
     // services is transactional (open → one reply → close), others are long-lived
     const isTransactional = routePath === '/services/';
