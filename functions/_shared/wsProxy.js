@@ -6,9 +6,9 @@ export async function handleProxyRequest(context, label = "Proxy") {
     // Decide upstream path from incoming route. Default to /matchmaker/.
     let routePath = '/matchmaker/';
     if (reqUrl.pathname.startsWith('/services')) routePath = '/services/';
-	else if (reqUrl.pathname.startsWith('/game/')) {  // <-- ADD TRAILING SLASH
-		routePath = reqUrl.pathname;  // Preserve full path: /game/four-save-jets
-	}
+    else if (reqUrl.pathname.startsWith('/game/')) {  // <-- ADD TRAILING SLASH
+        routePath = reqUrl.pathname;  // Preserve full path: /game/four-save-jets
+    }
 
     // services is transactional (open → one reply → close), others are long-lived
     const isTransactional = routePath === '/services/';
@@ -58,23 +58,35 @@ export async function handleProxyRequest(context, label = "Proxy") {
     const cookies = parseCookies(request.headers.get('Cookie'));
     const forcedUp = reqUrl.searchParams.get('up'); // for testing, e.g. ?up=dev.shellshock.io
 
+    // CHANGE: validate against allowlist domains and their subdomains (no hardcoded patterns)
     function isValidBackend(host) {
         if (!host) return false;
-        if (host === 'dev.shellshock.io') return true;
-        // Allow game cluster subdomains: egs-static-dev-uswest-z6w70a8.shellshock.io, etc.
-        return /^egs-[a-z0-9-]+\.shellshock\.io$/.test(host);
+        const h = host.toLowerCase();
+
+        // Accept if it matches any entry in the allowlist or is a subdomain of it.
+        // e.g., allowlist = ["deathegg.life", "shellbros.pages.dev"]
+        // - "deathegg.life"            ✅
+        // - "x.deathegg.life"          ✅
+        // - "egs-static-...deathegg.life" ✅
+        return allowlist.some(domain => {
+            const d = domain.toLowerCase();
+            return h === d || h.endsWith(`.${d}`);
+        });
     }
-    
+
+    // Keep your existing allowlist array; populate it with proxy base domains.
+    // Example during testing:
+    //   const allowlist = ["deathegg.life", "shellbros.pages.dev", "dev.shellshock.io"];
     const allowlist = [
         "dev.shellshock.io"
     ];
-    
+
     const sticky = forcedUp || cookies['ws_upstream'] || '';
 
     // If ?up= or cookie specifies a valid backend, use it first
     let backends;
     if (sticky && isValidBackend(sticky)) {
-        backends = [sticky, ...allowlist.filter(b => b !== sticky)];
+        backends = [sticky, ...allowlist.filter(b => b.toLowerCase() !== sticky.toLowerCase())];
     } else {
         backends = allowlist.slice();
     }
@@ -117,18 +129,18 @@ export async function handleProxyRequest(context, label = "Proxy") {
 
                 let repliedOnce = false;
 
-				// Only send ping for probe connections (no game code)
-				const isProbe = routePath === '/game/' && reqUrl.searchParams.has('probe');
+                // Only send ping for probe connections (no game code)
+                const isProbe = routePath === '/game/' && reqUrl.searchParams.has('probe');
 
-				if (isProbe) {
-					try {
-						if (backendWs.readyState === WebSocket.OPEN) {
-							backendWs.send('ping');
-						}
-					} catch (e) {
-						console.error(`[${label}] Failed to send initial ping:`, e.message);
-					}
-				}
+                if (isProbe) {
+                    try {
+                        if (backendWs.readyState === WebSocket.OPEN) {
+                            backendWs.send('ping');
+                        }
+                    } catch (e) {
+                        console.error(`[${label}] Failed to send initial ping:`, e.message);
+                    }
+                }
 
                 backendWs.addEventListener("message", (event) => {
                     console.log(`[${label}] Backend sent:`, typeof event.data, event.data);
