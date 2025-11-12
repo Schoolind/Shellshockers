@@ -90,7 +90,7 @@ export async function handleProxyRequest(context, label = "Proxy") {
     //   const allowlist = ["deathegg.life", "shellbros.pages.dev", "dev.shellshock.io"];
     const allowlist = [
         "dev.shellshock.io",
-		// 'shellshock.io',
+		'shellshock.io',
     ];
 
     const sticky = forcedUp || cookieUp || '';
