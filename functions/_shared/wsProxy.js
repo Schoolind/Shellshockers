@@ -89,8 +89,8 @@ export async function handleProxyRequest(context, label = "Proxy") {
     // Example during testing:
     //   const allowlist = ["deathegg.life", "shellbros.pages.dev", "dev.shellshock.io"];
     const allowlist = [
-		'shellshock.io',
-        "dev.shellshock.io"
+        "dev.shellshock.io",
+		// 'shellshock.io',
     ];
 
     const sticky = forcedUp || cookieUp || '';
