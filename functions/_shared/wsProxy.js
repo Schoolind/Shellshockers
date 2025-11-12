@@ -195,3 +195,24 @@ export async function handleProxyRequest(context, label = "Proxy") {
 	  return new Response("Internal server error", { status: 500 });
 	}
   }
+async function createAuthToken(ip, secret) {
+    const timestamp = Date.now().toString();
+    const data = `${ip}|${timestamp}`;
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
+    const sigHex = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, "0")).join("");
+    return base64urlEncode(`${data}|${sigHex}`);
+}
+
+function base64urlEncode(str) {
+    return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
