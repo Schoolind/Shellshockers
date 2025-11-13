@@ -4,21 +4,24 @@ Sync script: Copies content from ShellShockers/game/distShellHome to shellbros.g
 Cleans destination first, preserving whitelisted items.
 
 Usage:
-    python sync_shellshockers.py           # Execute the sync
-    python sync_shellshockers.py --dry-run # Preview what would happen
+    python sync_shellshockers.py                    # Execute with default URL
+    python sync_shellshockers.py --url https://...  # Execute with custom URL
+    python sync_shellshockers.py --dry-run          # Preview what would happen
 """
 
 import os
 import sys
 import shutil
+import subprocess
 from pathlib import Path
 
 
 # Whitelist: items to preserve in destination
 WHITELIST = {'.git', '.gitignore', 'app', 'readme.md', 'functions'}
 
-# Global flag for dry-run mode
+# Global flags
 DRY_RUN = False
+BUILD_URL = 'https://dev.shellshock.io'
 
 
 def abort(message):
@@ -36,8 +39,53 @@ def get_paths():
     
     destination = giant_mess / 'shellbros.github.io'
     source = giant_mess / 'ShellShockers' / 'game' / 'distShellHome'
+    game_dir = giant_mess / 'ShellShockers' / 'game'
     
-    return source, destination
+    return source, destination, game_dir
+
+
+def run_build_script(game_dir, url):
+    """Run makeShellhome.sh with the provided URL."""
+    build_script = game_dir / 'makeShellhome.sh'
+    
+    if not build_script.exists():
+        abort(f"Build script not found: {build_script}")
+    
+    if not os.access(build_script, os.X_OK):
+        abort(f"Build script is not executable: {build_script}")
+    
+    print(f"✓ Found build script: {build_script}")
+    print(f"  Running with URL: {url}")
+    
+    if DRY_RUN:
+        print(f"  [DRY-RUN] Would run: {build_script} {url}")
+        return
+    
+    try:
+        # Run the script and capture output in real-time
+        process = subprocess.Popen(
+            [str(build_script), url],
+            cwd=str(game_dir),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        
+        # Stream output as it happens
+        for line in process.stdout:
+            print(f"  │ {line.rstrip()}")
+        
+        # Wait for completion
+        return_code = process.wait()
+        
+        if return_code != 0:
+            abort(f"Build script failed with exit code {return_code}")
+        
+        print(f"✓ Build script completed successfully")
+        
+    except Exception as e:
+        abort(f"Failed to run build script: {e}")
 
 
 def validate_source(source):
@@ -173,12 +221,29 @@ def empty_source(source):
     print(f"✓ Emptied source directory: {action.lower()} {removed_count} items")
 
 
-def main():
-    global DRY_RUN
+def parse_arguments():
+    """Parse command line arguments."""
+    global DRY_RUN, BUILD_URL
     
-    # Check for dry-run flag
-    if len(sys.argv) > 1 and sys.argv[1] in ('--dry-run', '-d', '--preview', '-p'):
-        DRY_RUN = True
+    i = 1
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        
+        if arg in ('--dry-run', '-d', '--preview', '-p'):
+            DRY_RUN = True
+        elif arg in ('--url', '-u'):
+            if i + 1 >= len(sys.argv):
+                abort("--url requires a URL argument")
+            BUILD_URL = sys.argv[i + 1]
+            i += 1
+        else:
+            abort(f"Unknown argument: {arg}")
+        
+        i += 1
+
+
+def main():
+    parse_arguments()
     
     mode_indicator = " [DRY-RUN MODE]" if DRY_RUN else ""
     print("=" * 60)
@@ -189,12 +254,17 @@ def main():
         print("\n⚠️  DRY-RUN MODE: No files will be modified\n")
     
     # Get paths
-    source, destination = get_paths()
+    source, destination, game_dir = get_paths()
+    print(f"Game Directory: {game_dir}")
     print(f"Source: {source}")
     print(f"Destination: {destination}\n")
     
+    # Step 0: Run build script
+    print("[0/4] Running build script...")
+    run_build_script(game_dir, BUILD_URL)
+    
     # Step 1: Validate source
-    print("[1/4] Validating source...")
+    print("\n[1/4] Validating source...")
     validate_source(source)
     
     # Step 2: Clean destination
