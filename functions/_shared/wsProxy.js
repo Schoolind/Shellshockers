@@ -22,7 +22,6 @@ export async function handleProxyRequest(context, label = "Proxy") {
 	const clientIP = request.headers.get("CF-Connecting-IP");
 	const country = request.headers.get("CF-IPCountry") || "unknown";
 	if (!clientIP) return new Response("Unable to determine client IP", { status: 500 });
-	console.log(`[${label}] Client ${clientIP} (${country})`);
   
 	function parseCookies(header) {
 	  return (header || '').split(';').reduce((acc, part) => {
@@ -163,7 +162,10 @@ export async function handleProxyRequest(context, label = "Proxy") {
 	  // For game routes we require an explicit, valid backend (no broad fallback).
 	  if (!sticky || !isValidBackend(sticky)) {
 		console.error(`[${label}] Missing or invalid ?up backend for game route: "${sticky}"`);
-		return new Response("Invalid upstream", { status: 400 });
+		return new Response("Invalid upstream", { 
+			status: 400,
+			headers: { "Content-Type": "text/plain" }
+		  });
 	  }
 	  backends = [sticky]; // single candidate — exactly what was requested
 	} else {
@@ -179,8 +181,15 @@ export async function handleProxyRequest(context, label = "Proxy") {
 	  const token = await createAuthToken(clientIP, env.HMAC_SECRET);
 	  console.log(`[${label}] Token generated: ${token.substring(0, 20)}...`);
   
-	  const shuffled = shuffleArray([...backends]);
-	  const maxAttempts = 10;
+	  let shuffled;
+	  if (sticky && isValidBackend(sticky)) {
+		const others = allowlist.filter(b => b.toLowerCase() !== sticky.toLowerCase());
+		shuffled = [sticky, ...shuffleArray(others)];
+	  } else {
+		shuffled = shuffleArray([...backends]);
+	  }
+	  
+	  const maxAttempts = 30;
   
 	  for (let i = 0; i < Math.min(maxAttempts, shuffled.length); i++) {
 		const backend = shuffled[i];
@@ -218,7 +227,7 @@ export async function handleProxyRequest(context, label = "Proxy") {
   
 		  if (isProbe) {
 			try {
-			  if (backendWs.readyState === WebSocket.OPEN) backendWs.send('ping');
+			  if (backendWs.readyState === WebSocket.OPEN) backendWs.send(JSON.stringify({ command: 'ping' }));
 			} catch (e) {
 			  console.error(`[${label}] Failed to send initial ping:`, e.message);
 			}
@@ -255,13 +264,9 @@ export async function handleProxyRequest(context, label = "Proxy") {
 		  const headers = new Headers();
 		  if (selectedClientProto) headers.set("Sec-WebSocket-Protocol", selectedClientProto);
   
-		  // CHANGE: persist chosen backend only for /game/ so we don’t “pin” control-plane
-		  if (routePath.startsWith('/game/')) {
-			headers.append("Set-Cookie",
-			  `ws_upstream=${backend}; Path=/; Max-Age=1800; Secure; HttpOnly; SameSite=None`);
-		  }
-  
-		  console.log(`[${label}] ✓ Connected to ${backend} for ${clientIP}`);
+		headers.append("Set-Cookie",
+			`ws_upstream=${backend}; Path=/; Secure; HttpOnly; SameSite=None`);
+
 		  return new Response(null, { status: 101, webSocket: client, headers });
   
 		} catch (error) {
