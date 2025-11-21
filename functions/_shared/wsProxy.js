@@ -66,7 +66,7 @@ export async function handleProxyRequest(context, label = "Proxy") {
   
 	// CONTROL allowlist stays dev-only; we *don’t* include shellshock.io here
 	const allowlist = [
-	//   "shellshock.io",
+	  "shellshock.io",
 	//   "algebra.best",
 	//   "algebra.vip",
 	//   "algebra.monster",
