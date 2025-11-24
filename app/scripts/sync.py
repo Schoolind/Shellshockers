@@ -17,7 +17,7 @@ from pathlib import Path
 
 
 # Whitelist: items to preserve in destination
-WHITELIST = {'.git', '.gitignore', 'app', 'readme.md', 'functions'}
+WHITELIST = {'.git', '.gitignore', 'app', 'readme.md', 'functions', '_headers'}
 
 # Global flags
 DRY_RUN = False

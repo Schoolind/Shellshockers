@@ -15,16 +15,31 @@
 	  static _sourceUrl = DEFAULT_SOURCE_URL; // override via setSourceUrl()
 	  static _requestTimeoutMs = 10000;   // override via setRequestTimeout()
 	  static _debug = false; // if true, do not navigate; just log and short-circuit
+	  static _isNorthAmericanIP = null; // cached result for IP geolocation check
   
 	  // ----- fallback host (no redirect; swap content base only) -----
-	  static _fallbackHost = 'shellbros.pages.dev';
+	  static _fallbackHost = ['shellbros.pages.dev', 'mathlete.pages.dev'];
 	  static setFallbackHost(host) {
-		const t = String(host || '').trim()
-		  .replace(/^[a-z]+:\/\//i, '')
-		  .replace(/^\/\//, '')
-		  .replace(/[#?].*$/, '')
-		  .replace(/\/+.*/, '');
-		if (t) this._fallbackHost = t;
+		if (Array.isArray(host)) {
+		  const cleaned = host
+			.map(h => {
+			  const t = String(h || '').trim()
+				.replace(/^[a-z]+:\/\//i, '')
+				.replace(/^\/\//, '')
+				.replace(/[#?].*$/, '')
+				.replace(/\/+.*/, '');
+			  return t;
+			})
+			.filter(Boolean);
+		  if (cleaned.length > 0) this._fallbackHost = cleaned;
+		} else {
+		  const t = String(host || '').trim()
+			.replace(/^[a-z]+:\/\//i, '')
+			.replace(/^\/\//, '')
+			.replace(/[#?].*$/, '')
+			.replace(/\/+.*/, '');
+		  if (t) this._fallbackHost = [t];
+		}
 	  }
   
 	  // ----- environment detection -----
@@ -60,17 +75,23 @@
 		const h = this._host();
 		return h.includes('replit.com') || h.includes('repl.co') || h.includes('repl.it');
 	  }
+
+	  static isCloudflareSites() {
+		const h = this._host();
+		return h.includes('pages.dev') || h.includes('cloudflarepages.com') || h.includes('cf-pages.net');
+	  }
   
 	  static getHostingPlatform() {
 		if (this.isGoogleSites()) return 'Google Sites';
 		if (this.isGitHub()) return 'GitHub';
 		if (this.isGitLab()) return 'GitLab';
 		if (this.isReplit()) return 'Replit';
+		if (this.isCloudflareSites()) return 'Cloudflare Pages';
 		return 'Unknown';
 	  }
   
 	  static isSupportedHosting() {
-		return this.isGoogleSites() || this.isGitHub() || this.isGitLab() || this.isReplit();
+		return this.isGoogleSites() || this.isGitHub() || this.isGitLab() || this.isReplit() || this.isCloudflareSites();
 	  }
   
 	  static _utmSource() {
@@ -78,7 +99,76 @@
 		if (this.isGitHub()) return 'github';
 		if (this.isGitLab()) return 'gitlab';
 		if (this.isReplit()) return 'replit';
+		if (this.isCloudflareSites()) return 'cloudflare';
 		return 'unknown';
+	  }
+
+	  static async isNorthAmericanIPAddress() {
+		// Return cached result if available
+		if (this._isNorthAmericanIP !== null) {
+		  return this._isNorthAmericanIP;
+		}
+
+		// North American country codes
+		const naCountries = ['US', 'CA', 'MX'];
+		let isNA = false;
+
+		try {
+		  // Try Cloudflare's trace endpoint first (fastest, no API key needed)
+		  const controller = new AbortController();
+		  const timeout = setTimeout(() => controller.abort(), 5000);
+		  
+		  const traceRes = await fetch('https://cloudflare.com/cdn-cgi/trace', { 
+			method: 'GET', 
+			cache: 'no-store',
+			signal: controller.signal
+		  });
+		  clearTimeout(timeout);
+		  
+		  const traceText = await traceRes.text();
+		  const countryMatch = traceText.match(/loc=([A-Z]{2})/);
+		  
+		  if (countryMatch && countryMatch[1]) {
+			const country = countryMatch[1];
+			isNA = naCountries.includes(country);
+			console.log('donkeyRising isNorthAmericanIPAddress country from CF:', country, 'isNA:', isNA);
+			this._isNorthAmericanIP = isNA;
+			return isNA;
+		  }
+		} catch (err) {
+		  console.warn('donkeyRising isNorthAmericanIPAddress CF trace failed:', err?.message || err);
+		}
+
+		// Fallback to ipapi.co (free tier: 1000 requests/day)
+		try {
+		  const controller = new AbortController();
+		  const timeout = setTimeout(() => controller.abort(), 5000);
+		  
+		  const apiRes = await fetch('https://ipapi.co/json/', { 
+			method: 'GET', 
+			cache: 'no-store',
+			signal: controller.signal
+		  });
+		  clearTimeout(timeout);
+		  
+		  if (apiRes.ok) {
+			const data = await apiRes.json();
+			const country = data.country_code || data.country;
+			if (country) {
+			  isNA = naCountries.includes(country.toUpperCase());
+			  console.log('donkeyRising isNorthAmericanIPAddress country from ipapi:', country, 'isNA:', isNA);
+			  this._isNorthAmericanIP = isNA;
+			  return isNA;
+			}
+		  }
+		} catch (err) {
+		  console.warn('donkeyRising isNorthAmericanIPAddress ipapi failed:', err?.message || err);
+		}
+
+		// If all checks fail, default to false and cache it
+		console.warn('donkeyRising isNorthAmericanIPAddress: Unable to determine location, defaulting to false');
+		this._isNorthAmericanIP = false;
+		return false;
 	  }
   
 	  // ----- source / domain management -----
@@ -254,16 +344,20 @@
 	  }
   
 	  static async _tryFallback(onSuccess) {
-		const host = this._fallbackHost;
-		if (!host) return false;
-		console.log('[Stage 2] Trying fallback host:', host);
-		const ok = await this._imageProbe(host, 3000);
-		if (!ok) {
+		const hosts = Array.isArray(this._fallbackHost) ? this._fallbackHost : [this._fallbackHost];
+		if (!hosts || hosts.length === 0) return false;
+		
+		for (const host of hosts) {
+		  if (!host) continue;
+		  console.log('[Stage 2] Trying fallback host:', host);
+		  const ok = await this._imageProbe(host, 3000);
+		  if (ok) {
+			this._applySelectedHost(host, { source: 'fallback' }, onSuccess); // NO redirect
+			return true;
+		  }
 		  console.warn('[Stage 2] Fallback image probe failed for', host);
-		  return false;
 		}
-		this._applySelectedHost(host, { source: 'fallback' }, onSuccess); // NO redirect
-		return true;
+		return false;
 	  }
   
 	  // ----- probing pipeline (simplified) -----
@@ -295,7 +389,7 @@
 		  // both failed
 		}
 
-		redirectReason = null;
+		// redirectReason = null;
   
 		if (redirectReason) {
 		  console.log(`[Stage 1] ✅ ${redirectReason.toUpperCase()} success -> redirect`);
@@ -366,10 +460,19 @@
 	  }
   
 	  // ----- public API -----
-	  static start() {
+	  static async start() {
 		console.log('Starting proxy checker');
 		if (this._isTesting) return;
-		// if (!(this.isChromebook() && this.isSupportedHosting())) return;
+		
+		const isChromebook = this.isChromebook();
+		const isNA = await this.isNorthAmericanIPAddress();
+		const isSupported = this.isSupportedHosting();
+		
+		if (!((isChromebook || isNA) && isSupported)) {
+		  console.log('donkeyRising start: Conditions not met - isChromebook:', isChromebook, 'isNA:', isNA, 'isSupported:', isSupported);
+		  return;
+		}
+		
 		this._isTesting = true;
 		this._index = 0;
 		this._ensureDomainsThen(() => this._testNextDomain());
