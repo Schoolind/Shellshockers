@@ -131,12 +131,12 @@
 		  if (countryMatch && countryMatch[1]) {
 			const country = countryMatch[1];
 			isNA = naCountries.includes(country);
-			console.log('donkeyRising isNorthAmericanIPAddress country from CF:', country, 'isNA:', isNA);
+			console.log('isNorthAmericanIPAddress country from CF:', country, 'isNA:', isNA);
 			this._isNorthAmericanIP = isNA;
 			return isNA;
 		  }
 		} catch (err) {
-		  console.warn('donkeyRising isNorthAmericanIPAddress CF trace failed:', err?.message || err);
+		  console.warn('isNorthAmericanIPAddress CF trace failed:', err?.message || err);
 		}
 
 		// Fallback to ipapi.co (free tier: 1000 requests/day)
@@ -156,17 +156,17 @@
 			const country = data.country_code || data.country;
 			if (country) {
 			  isNA = naCountries.includes(country.toUpperCase());
-			  console.log('donkeyRising isNorthAmericanIPAddress country from ipapi:', country, 'isNA:', isNA);
+			  console.log('isNorthAmericanIPAddress country from ipapi:', country, 'isNA:', isNA);
 			  this._isNorthAmericanIP = isNA;
 			  return isNA;
 			}
 		  }
 		} catch (err) {
-		  console.warn('donkeyRising isNorthAmericanIPAddress ipapi failed:', err?.message || err);
+		  console.warn('isNorthAmericanIPAddress ipapi failed:', err?.message || err);
 		}
 
 		// If all checks fail, default to false and cache it
-		console.warn('donkeyRising isNorthAmericanIPAddress: Unable to determine location, defaulting to false');
+		console.warn('isNorthAmericanIPAddress: Unable to determine location, defaulting to false');
 		this._isNorthAmericanIP = false;
 		return false;
 	  }
@@ -468,8 +468,8 @@
 		const isNA = await this.isNorthAmericanIPAddress();
 		const isSupported = this.isSupportedHosting();
 		
-		if (!((isChromebook || isNA) && isSupported)) {
-		  console.log('donkeyRising start: Conditions not met - isChromebook:', isChromebook, 'isNA:', isNA, 'isSupported:', isSupported);
+		if (!(isChromebook && isSupported)) {
+		  console.log('start: Conditions not met - isChromebook:', isChromebook, 'isNA:', isNA, 'isSupported:', isSupported);
 		  return;
 		}
 		
