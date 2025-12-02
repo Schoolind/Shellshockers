@@ -669,6 +669,11 @@
   "item_9mm_turkey_desc": "The no-big-deal kill steal",
   "item_hat_pilgrim_title": "The Mecha Pilgrim",
   "item_hat_pilgrim_desc": "Give Thanks... Or Else",
+  "item_hat_wooly_title": "The Wooly Mammoth Hat",
+  "item_hat_wooly_desc": "Stay warm out there!",
+  "item_melee_crack_title": "The Christmas Cracker",
+  "item_melee_crack_desc": "Full of festive fun",
+
   "bun_goodw_title": "The Goodwitch Bundle",
   "bun_goodw_desc": "Wicked Fun!",
 
@@ -963,9 +968,6 @@
   "faqItems_q5_anchor": "Best Weapon?",
   "faqItems_q5_q": "What is the Best Gun in Shell Shockers?",
   "faqItems_q5_a": "<p>The best gun in Shell Shockers depends on your gameplay style, but trending fan favorites include the powerful Crackshot, a bolt action sniper rifle for precise egg-sniping and the versatile Scrambler, a shotgun for epic close-range yolk explosions. Experiment, find your playstyle, and dominate like a true egg warrior!</p>",
-  "faqItems_q6_anchor": "Controls",
-  "faqItems_q6_q": "How do I throw a grenade, melee or inspect a weapon?",
-  "faqItems_q6_a": "<p>INSERT INSTRUCTION POPUP</p>",
   "faqItems_q7_anchor": "Bugs",
   "faqItems_q7_q": "Are you aware of this bug?",
   "faqItems_q7_a": "<p>Probably, but <b>reports</b> are always useful! Here are some known issues we're currently battling:</p>\n<ul>\n  <li>Sometimes your gun and pistol will swap ammo; despawning and changing your weapon should fix this.</li>\n  <li>If you notice you are not getting Eggs for kills, please reload the page.</li>\n  <li>Occasionally instead of the eggdoll you see a massive weapon that takes up the whole screen. This one is kinda fun!</li>\n  <li>Ads sometimes can be more aggressive than intended! Right click, save URL and send to us here.</li>\n</ul>",

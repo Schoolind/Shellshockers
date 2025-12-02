@@ -80,6 +80,36 @@
 	color: var(--ss-white);
 }
 
+.egg_count {
+    display: inline-block;
+    // transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.egg_count_formatted {
+    opacity: 1;
+}
+
+.egg_count_total {
+    position: absolute;
+    // transition: transform .25s ease-in-out;
+    opacity: 0;
+	white-space: nowrap;
+	visibility: hidden;
+    // transform: scale(0);
+}
+
+.egg_count_container.has_egg_count_total:hover .egg_count_formatted {
+	position: absolute;
+    opacity: 0;
+}
+
+.egg_count_container.has_egg_count_total:hover .egg_count_total {
+    opacity: 1;
+	position: relative;
+	visibility: visible;
+    // transform: scale(1);
+}
+
 #loginButton {
 	margin-left: var(--ss-space-sm);
 	width: 7em;

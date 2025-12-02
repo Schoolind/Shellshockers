@@ -325,8 +325,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="facebook-domain-verification" content="6lfua33vx0abiv1asnt9p13aac29xy" />
-<title>Shell Shockers 🍳 Also at eggshooter.com </title>
-<meta name="Description" content="Blocked? Try eggshooter.com | The OFFICIAL home of Shell Shockers, the world’s best egg-based shooter! It’s like your favorite FPS battlefield game… with eggs.">
+<title>Shell Shockers 🍳 Also at shellshockers.ca </title>
+<meta name="Description" content="Blocked? Try shellshockers.ca | The OFFICIAL home of Shell Shockers, the world’s best egg-based shooter! It’s like your favorite FPS battlefield game… with eggs.">
 <meta name="Keywords" content="Games, Free games, online, multiplayer, io games, shell shockers, web game, shooter, fps, bullets, egg game, egg shooter, unblocked games">
 <meta name="author" content="Blue Wizard Digital">
 
@@ -344,13 +344,13 @@
 <meta property="og:image" content="https://www.shellshock.io/img/previewImage_shellShockers.webp" />
 <meta name="image" property="og:image" content="https://www.shellshock.io/img/previewImage_shellShockers.webp" />
 <meta property="og:title" content="Shell Shockers | by Blue Wizard Digital" />
-<meta property="og:description" content="Blocked? Try eggshooter.com | The OFFICIAL home of Shell Shockers, the world’s best egg-based shooter! It’s like your favorite FPS battlefield game… with eggs." />
+<meta property="og:description" content="Blocked? Try shellshockers.ca | The OFFICIAL home of Shell Shockers, the world’s best egg-based shooter! It’s like your favorite FPS battlefield game… with eggs." />
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@bluewizardgames">
 <meta name="twitter:creator" content="@bluewizardgames">
 <meta name="twitter:title" content="Shell Shockers | by Blue Wizard Digital">
-<meta name="twitter:description" content="Blocked? Try eggshooter.com | The OFFICIAL home of Shell Shockers, the world’s best egg-based shooter! It’s like your favorite FPS battlefield game… with eggs.">
+<meta name="twitter:description" content="Blocked? Try shellshockers.ca | The OFFICIAL home of Shell Shockers, the world’s best egg-based shooter! It’s like your favorite FPS battlefield game… with eggs.">
 <meta name="twitter:image" content="https://www.shellshock.io/img/previewImage_shellShockers.webp">
 
 <script type="application/ld+json">
@@ -581,7 +581,7 @@
 </style><!-- Styles & Fonts -->
 <link href="https://fonts.googleapis.com/css?family=Sigmar+One|Nunito:100,200,600,700,900" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css" crossorigin="anonymous">
-<link rel="stylesheet" href="styles/style.min.css?1763052393"><script>
+<link rel="stylesheet" href="styles/style.min.css?1764359463"><script>
 function storageFactory(getStorage) {
 
 	const inMemoryStorage = {};
@@ -1298,7 +1298,7 @@ const ShellStreak = {
 		if (window.Loader) {
 			clearInterval(loaderInterval);
 			Loader.loadJS('js/screenShot.js?1692215954');
-			Loader.loadJS('js/shellshock.js?1763052454', ssJSComplete);
+			Loader.loadJS('js/shellshock.js?1764359524', ssJSComplete);
 		}
 	}, 100);
 </script>		<!-- google tag manager noscript -->
@@ -1391,7 +1391,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 {{ loc.home_desc_madeof }}
             </p>
             <section class="text-center">
-                <p>{{ loc.home_blocked_start }} eggshooter.com {{ loc.home_blocked_end }}</p>
+                <p>{{ loc.home_blocked_start }} shellshockers.ca {{ loc.home_blocked_end }}</p>
             </section>
             <div class="display-grid grid-column-2-eq gap-1 ">
                 <section>
@@ -7094,7 +7094,10 @@ var comp_social_panel = {
                 alt="Golden Egg Icon"
             >
         </div>
-        <span ref="eggCounter" class="egg_count">{{ formattedBalance }}</span>
+        <div ref="eggCounter" class="egg_count_container" :class="{'has_egg_count_total': formattedBalance.showTotal}">
+            <span class="egg_count egg_count_formatted" :title="formattedBalance.eggBalance">{{ formattedBalance.formattedBalance }}</span>
+            <span v-if="formattedBalance.showTotal" class="egg_count egg_count_total">{{ formattedBalance.eggBalance }}</span>
+        </div>
     </div>
 </script>
 
@@ -7319,9 +7322,37 @@ var comp_social_panel = {
             formattedBalance() {
                 // Add number formatting for large values
                 try {
-                    return this.eggBalance.toLocaleString();
+                    const num = this.eggBalance;
+
+                    if (num < 1000) {
+                        return {
+                            formattedBalance: num.toString(),
+                            eggBalance: Number(num).toLocaleString(),
+                            showTotal: false
+                        };
+                    }
+
+                    const units = ['k', 'M', 'B', 'T'];
+                    let unitIndex = 0;
+                    let value = num / 1000;
+
+                    while (value >= 1000 && unitIndex < units.length - 1) {
+                        value /= 1000;
+                        unitIndex++;
+                    }
+
+                    // Show decimal only if under 10 in the current unit
+                    return {
+                        formattedBalance: (value < 10 ? value.toFixed(1) : Math.floor(value)) + units[unitIndex],
+                        eggBalance: Number(num).toLocaleString(),
+                        showTotal: num > 999
+                    };
                 } catch (error) {
-                    return String(this.eggBalance);
+                    return {
+                        formattedBalance: String(this.eggBalance),
+                        eggBalance: Number(this.eggBalance).toLocaleString(),
+                        showTotal: this.eggBalance > 999
+                    };
                 }
             }
         },
@@ -8704,7 +8735,7 @@ var comp_footer_links_panel = {
 				<img class="house-ad-img" :class="imgCls" :src="imgSrc" :alt="altText" @click="adOnClick">
 			</div>
 			<div v-if="!isCrazyGames" class="ss_margintop box_relative">
-				<a href="https://freegames.io/game/shell-shockers?utm_source=shellshockershomepage&utm_medium=referral" target="_blank" title="Play Free Games on... well, freegames.io">
+				<a href="https://freegames.io/tag/bluewizard?utm_source=shellshockershomepage&utm_medium=referral" target="_blank" title="Play Free Games on... well, freegames.io">
 					<img v-lazyload :data-src="portalImage" :alt="portalAltText" class="display-block center_h free-games-logo lazy-load">
 				</a>
 			</div>
