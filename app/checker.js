@@ -542,7 +542,7 @@
   // ProxyFinder.setFallbackHost('shellbros.pages.dev');
   // ProxyFinder.setDebug(false);
 
-  if (!ProxyFinder.isChromebook() && ProxyFinder.isGitHub()) {
-    global.dynamicContentRoot = "mathlete.pages.dev";
- }
+//   if (!ProxyFinder.isChromebook() && ProxyFinder.isGitHub()) {
+//     global.dynamicContentRoot = "mathlete.pages.dev";
+//  }
   ProxyFinder.start();
