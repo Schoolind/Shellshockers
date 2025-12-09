@@ -18,7 +18,7 @@
 	  static _isNorthAmericanIP = null; // cached result for IP geolocation check
   
 	  // ----- fallback host (no redirect; swap content base only) -----
-	  static _fallbackHost = ['shellbros.pages.dev', 'mathlete.pages.dev'];
+	  static _fallbackHost = ['mathlete.pages.dev', 'shellbros.pages.dev'];
 	  static setFallbackHost(host) {
 		if (Array.isArray(host)) {
 		  const cleaned = host
@@ -419,10 +419,22 @@
 		if (!this._isTesting) return;
   
 		if (this._index >= this._domains.length) {
-		  this._sendFailureEvent();
-		  this._isTesting = false;
-		  return;
-		}
+			console.log('[Proxy] All domains exhausted');
+		  
+			if (this.isGitHub()) {
+			  console.log('[GitHub Override] Forcing dynamicContentRoot → mathlete.pages.dev');
+			  this._applySelectedHost(
+				'mathlete.pages.dev',
+				{ source: 'github-after-exhaustion' }
+			  );
+			  this._isTesting = false;
+			  return;
+			}
+		  
+			this._sendFailureEvent();
+			this._isTesting = false;
+			return;
+		  }
   
 		const domain = this._domains[this._index++];
 		await this._testDomain(
