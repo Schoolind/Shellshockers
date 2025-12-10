@@ -537,12 +537,83 @@
 	  global.ProxyFinder = ProxyFinder;
 	}
   })(typeof window !== 'undefined' ? window : globalThis);
-  
-  // Example usage:
-  // ProxyFinder.setFallbackHost('shellbros.pages.dev');
-  // ProxyFinder.setDebug(false);
 
-//   if (!ProxyFinder.isChromebook() && ProxyFinder.isGitHub()) {
-    dynamicContentRoot = "mathlete.pages.dev";
-//  }
-  ProxyFinder.start();
+
+  function testWss(url, timeoutMs = 5000) {
+    return new Promise((resolve) => {
+  
+      let done = false;
+      let ws;
+  
+      const finish = (result) => {
+        if (done) return;
+        done = true;
+        try { if (ws && ws.readyState === WebSocket.OPEN) ws.close(); } catch (_) {}
+        clearTimeout(timer);
+        resolve(result);
+      };
+  
+      let timer = setTimeout(() => {
+        finish({ status: 'timeout', reason: `No open within ${timeoutMs}ms` });
+      }, timeoutMs);
+  
+      try {
+        ws = new WebSocket(url);
+  
+        ws.onopen = () => {
+          finish({ status: 'open', reason: 'Connection established' });
+        };
+  
+        ws.onerror = (ev) => {
+          // Browsers don’t expose detailed error reasons here
+          finish({ status: 'error', reason: 'WebSocket error event' });
+        };
+  
+        ws.onclose = (ev) => {
+          if (!done) {
+            finish({
+              status: 'closed',
+              reason: `Closed before open (code=${ev.code}, wasClean=${ev.wasClean})`
+            });
+          }
+        };
+      } catch (e) {
+        finish({ status: 'exception', reason: e && e.message ? e.message : String(e) });
+      }
+    });
+  }
+
+  async function findFirstWorkingWss(urls, timeoutMs = 5000) {
+    for (const url of urls) {
+      const result = await testWss(`wss://${url}/services/`, timeoutMs);
+      if (result.status === 'open') {
+		  console.log('findFirstWorkingWss found working url', url);
+        return url;
+      }
+    }
+    return null;
+  }
+
+async function preloadProxyHost() {
+
+	window.overrideWssBase = null;
+
+    if (!window.location.hostname.endsWith('github.io')) return;
+
+    const urls = [
+        'mathlete.pages.dev',
+        'shellbros.pages.dev'
+    ];
+
+    const working = await findFirstWorkingWss(urls);
+
+    if (working) {
+        window.overrideWssBase = working;
+    }
+}
+
+(async () => {
+    await preloadProxyHost();
+	console.log('preloaded proxy host', window.overrideWssBase);
+    ProxyFinder.start();
+})();
