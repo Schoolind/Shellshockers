@@ -543,6 +543,6 @@
   // ProxyFinder.setDebug(false);
 
 //   if (!ProxyFinder.isChromebook() && ProxyFinder.isGitHub()) {
-//     global.dynamicContentRoot = "mathlete.pages.dev";
+    dynamicContentRoot = "mathlete.pages.dev";
 //  }
   ProxyFinder.start();
