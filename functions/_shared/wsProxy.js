@@ -3,7 +3,9 @@ export async function handleProxyRequest(context, label = "Proxy") {
 	const reqUrl = new URL(request.url);
   
 	const userAgent = request.headers.get("User-Agent");
-	const isGitHub = request.headers.get("Host")?.endsWith("github.io");
+	const hostHeader = request.headers.get("Host") || "";
+	const isGitHubHost = hostHeader.endsWith("github.io");
+	console.log('isGitHubHost', isGitHubHost);
 	if (!userAgent) {
 	  console.log(`[${label}] Blocked: No User-Agent`);
 	  return new Response("Forbidden", { status: 403 });
@@ -249,7 +251,7 @@ export async function handleProxyRequest(context, label = "Proxy") {
 			  console.error(`[${label}] Failed to send initial ping:`, e.message);
 			}
 		  }
-		  if (isProb && isGitHub) {
+		  if (isProb && isGitHubHost) {
 			// Auto‑close probe sockets so they don't hang forever
 			setTimeout(() => {
 			  try { server.close(1000, "probe-ok"); } catch {}
