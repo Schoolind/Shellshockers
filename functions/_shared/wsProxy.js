@@ -251,13 +251,13 @@ export async function handleProxyRequest(context, label = "Proxy") {
 			  console.error(`[${label}] Failed to send initial ping:`, e.message);
 			}
 		  }
-		  if (isProb && isGitHubHost) {
+		  if (isProbe && isGitHubHost) {
 			// Auto‑close probe sockets so they don't hang forever
 			setTimeout(() => {
 			  try { server.close(1000, "probe-ok"); } catch {}
 			  try { backendWs.close(1000, "probe-ok"); } catch {}
 			}, 0);
-		  }
+		}
   
 		  let repliedOnce = false;
   
