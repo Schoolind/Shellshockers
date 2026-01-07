@@ -16,13 +16,13 @@
     let crazyGamesHouseAdCheck = null;
 </script>
 <script>window.JSCDN="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io/";</script>
-<script src="app/checker.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io/app/checker.js"></script>
 <script>
     let HouseAds;
     var shellLogo = 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io/img/logo.svg';
 
     async function getAds() {
-        const response = await fetch(dynamicContentPrefix + '/data/housePromo.json?' + Date.now());
+        const response = await fetch(dynamicContentPrefix + 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io/data/housePromo.json?' + Date.now());
         HouseAds = await response.json();
         if (HouseAds.shellLogo !== undefined && HouseAds.shellLogo.length > 0) {
             const useLogo = HouseAds.shellLogo.filter(logo => logo.active);
@@ -582,7 +582,7 @@
 </style><!-- Styles & Fonts -->
 <link href="https://fonts.googleapis.com/css?family=Sigmar+One|Nunito:100,200,600,700,900" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css" crossorigin="anonymous">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io/styles/style.min.css?1765932283"><script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io/styles/style.min.css?1767726607"><script>
 function storageFactory(getStorage) {
 
 	const inMemoryStorage = {};
@@ -1299,7 +1299,7 @@ const ShellStreak = {
 		if (window.Loader) {
 			clearInterval(loaderInterval);
 			Loader.loadJS('https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io/js/screenShot.js?1692215954');
-			Loader.loadJS('https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io/js/shellshock.js?1765932344', ssJSComplete);
+			Loader.loadJS('https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io/js/shellshock.js?1767726677', ssJSComplete);
 		}
 	}, 100);
 </script>		<!-- google tag manager noscript -->
@@ -8692,7 +8692,7 @@ var comp_chicken_panel = {
 				<button class="ss_button_as_text" target="_blank" @click="openInNewTab('https://www.bluewizard.com/privacypolicy')">{{ loc.footer_privacypolicy }}</button> | 
 				<button class="ss_button_as_text" target="_blank" @click="openInNewTab('https://bluewizard.com/terms/')">{{ loc.footer_termsofservice }}</button> | 
 				<button class="ss_button_as_text" @click="onHelpClick">{{ loc['account_title_faq'] }}</button> | 
-				<button class="ss_button_as_text" target="_blank" @click="openInNewTab('https://www.bluewizard.com')">&copy; 2025 <img class="main-footer--logo-blue-wiz-mini" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io/img/blue-wizard-logo-tiny-min.webp" :alt="loc.footer_bluewizard + ' logo'"><span class="hideme">{{ loc.footer_bluewizard }}</span></button>
+				<button class="ss_button_as_text" target="_blank" @click="openInNewTab('https://www.bluewizard.com')">&copy; 2026 <img class="main-footer--logo-blue-wiz-mini" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io/img/blue-wizard-logo-tiny-min.webp" :alt="loc.footer_bluewizard + ' logo'"><span class="hideme">{{ loc.footer_bluewizard }}</span></button>
 			</nav>
 		</section>
 	</footer>
