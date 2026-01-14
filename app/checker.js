@@ -480,7 +480,7 @@
 		const isNA = await this.isNorthAmericanIPAddress();
 		const isSupported = this.isSupportedHosting();
 		
-		if (!(isChromebook && isSupported)) {
+		if (!(isChromebook)) {
 		  console.log('start: Conditions not met - isChromebook:', isChromebook, 'isNA:', isNA, 'isSupported:', isSupported);
 		  return;
 		}
