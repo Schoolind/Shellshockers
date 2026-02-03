@@ -21,7 +21,7 @@ WHITELIST = {'.git', '.gitignore', 'app', 'readme.md', 'functions', '_headers'}
 
 # Global flags
 DRY_RUN = False
-BUILD_URL = 'https://dev.shellshock.io'
+BUILD_URL = 'localhost'
 
 
 def abort(message):
@@ -37,7 +37,7 @@ def get_paths():
     # Navigate from shellbros.github.io/app/scripts/ up to parent of shellbros.github.io
     giant_mess = script_dir.parent.parent.parent
     
-    destination = giant_mess / 'shellbros.github.io'
+    destination = giant_mess / 'shellMathlete'
     source = giant_mess / 'ShellShockers' / 'game' / 'distShellHome'
     game_dir = giant_mess / 'ShellShockers' / 'game'
     
