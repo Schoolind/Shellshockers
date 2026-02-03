@@ -37,7 +37,7 @@ def get_paths():
     # Navigate from shellbros.github.io/app/scripts/ up to parent of shellbros.github.io
     giant_mess = script_dir.parent.parent.parent
     
-    destination = giant_mess / 'shellMathlete'
+    destination = giant_mess / 'shellbros.github.io'
     source = giant_mess / 'ShellShockers' / 'game' / 'distShellHome'
     game_dir = giant_mess / 'ShellShockers' / 'game'
     

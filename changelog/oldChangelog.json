@@ -1,5 +1,15 @@
 [		
-	{
+		{
+		"version": "1.0.19",
+        "date": "Jan 7 2026",
+        "content": [
+			"New Year, New Gear! Happy New Yolk to all the Shell Shockers out there around the world!",
+			"The Toxic bundle has leaked into the shop. Pick it up now... but maybe wear gloves",
+			"This Month's VIP items: Gearhead hat & Frosty the SnowBAM Grenade. In shop and free for VIPs",
+			"The new community map: Abduction, has been added to the private and public pools",
+			"We've thrown away the tinsel and Christmas Trees and returned the public map pool to its former glory"
+		]
+	},{
 		"version": "1.0.17",
         "date": "Dec 2 2025",
         "content": [
