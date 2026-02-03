@@ -15,15 +15,14 @@
     let testCrazy = false;
     let crazyGamesHouseAdCheck = null;
 </script>
-<script>window.JSCDN="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/";</script>
-<script src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/app/checker.js"></script>
-<script src="app/checker.js"></script>
+<script>window.JSCDN="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/";</script>
+<script src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/app/checker.js"></script>
 <script>
     let HouseAds;
-    var shellLogo = 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/logo.svg';
+    var shellLogo = 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/logo.svg';
 
     async function getAds() {
-        const response = await fetch(dynamicContentPrefix + 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/data/housePromo.json?' + Date.now());
+        const response = await fetch(dynamicContentPrefix + 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/data/housePromo.json?' + Date.now());
         HouseAds = await response.json();
         if (HouseAds.shellLogo !== undefined && HouseAds.shellLogo.length > 0) {
             const useLogo = HouseAds.shellLogo.filter(logo => logo.active);
@@ -35,255 +34,334 @@
 
     getAds();
 
-    class Loader {
+	// CDN-IGNORE-START
+	class Loader {
 
-        constructor() {
-            this.logo = '';
-            this.blueWizSrcAlt = '';
-            this.isShowing = false;
-        }
+		constructor() {
+			this.logo = '';
+			this.blueWizSrcAlt = '';
+			this.isShowing = false;
+		}
 
-        static show() {
-            let container = document.createElement('div');
-            container.id = 'progress-container';
-            container.style = `
-			position: fixed;
-			top: 0;
-			left: 0;
-			height: 100vh;
-			width: 100vw;
-			z-index: 2000;
-			background-image: var(--ss-lightoverlay);
-		`;
+		// --- URL resolution and validation ---
+		static _jscdnReady = false;
+		static _jscdnFallback = 'https://cdn.jsdelivr.net/gh/shellbros/mathlete/';
+		static _pendingLoads = [];
+		static _jscdnCheckAttempts = 0;
+		static _jscdnInterval = null;
 
-            const progressWrapper = document.createElement('div');
-            progressWrapper.id = 'progress-wrapper';
-            progressWrapper.className = 'load_screen align-items-center';
-            progressWrapper.style = `
-			position: absolute;
-			left: 50%;
-			top: -6em;
-			transform: translateX(-50%);
-			background-image: none;
-		`;
+		static _validateUrl(url) {
+			const lower = url.toLowerCase();
+			return lower.includes('cdn.jsdelivr.net') && lower.includes('shellbros/mathlete');
+		}
 
-            const blueWizLogo = document.createElement('img');
+		static _resolveurl(path) {
+			const base = window.JSCDN || this._jscdnFallback;
+			const normalizedBase = base.endsWith('/') ? base : base + '/';
+			const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+			const url = normalizedBase + normalizedPath;
 
-            if (this.blueWizSrcAlt) {
-                blueWizLogo.src = this.blueWizSrcAlt;
-            } else {
-                blueWizLogo.src = 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/blueWizard_logo.webp';
-            }
+			console.log('[Loader] Resolving URL:', url);
 
-            blueWizLogo.style = `
-			width: 16em;
-			display: block;
-			margin: 5em auto 0;
-			z-index: 2000;
-			position: absolute;
-			left: 50%;
-			bottom: 8em;
-			transform: translateX(-50%);
-		`;
+			if (!this._validateUrl(url)) {
+				console.error('[Loader] URL failed validation:', url);
+				return null;
+			}
+			return url;
+		}
 
-            this.logo = document.createElement('img');
-            this.logo.src = shellLogo;
-            this.logo.style = 'height: 16em';
-            this.logo.id = 'logo-svg';
-            // container.appendChild(logo);
+		static _checkJSCDN() {
+			if (this._jscdnReady) return true;
+			
+			if (window.JSCDN || this._jscdnCheckAttempts >= 50) {
+				this._jscdnReady = true;
+				if (!window.JSCDN) {
+					console.warn('[Loader] JSCDN not set after timeout, using fallback');
+				}
+				this._flushPendingLoads();
+				return true;
+			}
+			return false;
+		}
 
-            const progressOuter = document.createElement('div');
-            progressOuter.id = 'progress-outer';
-            progressOuter.style = `
-			position: relative;
-			background: #643219;
-			border-radius: 2em;
-			height: 3.3em;
-			width: 24em;
-			margin-top: 2em;
-		`;
+		static _waitForJSCDN(callback) {
+			if (this._checkJSCDN()) {
+				callback();
+				return;
+			}
 
+			this._pendingLoads.push(callback);
 
-            let progress = document.createElement('div');
-            progress.style = `
-			margin-top: 1em;
-			width: 23em;
-			height: 2.2em;
-			background: white;
-			padding: 0.5em;
-			border-radius: 2em;
-			margin: .3em .5em 0;
-		`;
-            container.appendChild(progress);
+			if (!this._jscdnInterval) {
+				this._jscdnInterval = setInterval(() => {
+					this._jscdnCheckAttempts++;
+					if (this._checkJSCDN()) {
+						clearInterval(this._jscdnInterval);
+						this._jscdnInterval = null;
+					}
+				}, 100);
+			}
+		}
 
-            let progressBar = document.createElement('span');
-            progressBar.id = 'progressBar';
-            progressBar.style = `
-			display: block;
-			width: 20%;
-			height: 100%;
-			background: orange;
-			border-radius: 2em;
-			margin-left: 80%;
-			margin: 0 .3em .5em 0;
-			opacity: 0;
-			transition: margin-left linear 500ms;
-			transition-timing-function: ease-in-out;
-		`;
+		static _flushPendingLoads() {
+			const pending = this._pendingLoads.slice();
+			this._pendingLoads = [];
+			for (const cb of pending) {
+				try { cb(); } catch (e) { console.error('[Loader] Pending load error:', e); }
+			}
+		}
 
-            const progressBarOutside = document.createElement('div');
+		static show() {
+			let container = document.createElement('div');
+			container.id = 'progress-container';
+			container.style = `
+				position: fixed;
+				top: 0;
+				left: 0;
+				height: 100vh;
+				width: 100vw;
+				z-index: 2000;
+				background-image: var(--ss-lightoverlay);
+			`;
 
+			const progressWrapper = document.createElement('div');
+			progressWrapper.id = 'progress-wrapper';
+			progressWrapper.className = 'load_screen align-items-center';
+			progressWrapper.style = `
+				position: absolute;
+				left: 50%;
+				top: -6em;
+				transform: translateX(-50%);
+				background-image: none;
+			`;
 
-            progress.appendChild(progressBar);
-            progressWrapper.appendChild(this.logo);
-            progressOuter.appendChild(progress);
-            progressWrapper.appendChild(progressOuter);
+			const blueWizLogo = document.createElement('img');
 
-            container.appendChild(progressWrapper);
-            container.appendChild(blueWizLogo);
+			if (this.blueWizSrcAlt) {
+				blueWizLogo.src = this.blueWizSrcAlt;
+			} else {
+				blueWizLogo.src = this._resolveurl('img/blueWizard_logo.webp') || 'img/blueWizard_logo.webp';
+			}
 
-            // Minor for the progress bar intial load
-            setTimeout(() => progressBar.style.opacity = 1, 600);
+			blueWizLogo.style = `
+				width: 16em;
+				display: block;
+				margin: 5em auto 0;
+				z-index: 2000;
+				position: absolute;
+				left: 50%;
+				bottom: 8em;
+				transform: translateX(-50%);
+			`;
 
+			this.logo = document.createElement('img');
+			this.logo.src = shellLogo;
+			this.logo.style = 'height: 16em';
+			this.logo.id = 'logo-svg';
 
-            Loader.barInterval = setInterval(() => {
-                if (Loader.progressBar.style.marginLeft == '0%') {
-                    Loader.progressBar.style.marginLeft = '80%';
-                } else {
-                    Loader.progressBar.style.marginLeft = '0%';
-                }
-            }, 500);
+			const progressOuter = document.createElement('div');
+			progressOuter.id = 'progress-outer';
+			progressOuter.style = `
+				position: relative;
+				background: #643219;
+				border-radius: 2em;
+				height: 3.3em;
+				width: 24em;
+				margin-top: 2em;
+			`;
 
-            Loader.progressBar = progressBar;
-            Loader.container = container;
+			let progress = document.createElement('div');
+			progress.style = `
+				margin-top: 1em;
+				width: 23em;
+				height: 2.2em;
+				background: white;
+				padding: 0.5em;
+				border-radius: 2em;
+				margin: .3em .5em 0;
+			`;
+			container.appendChild(progress);
 
-            let app = document.body;
-            app.appendChild(container);
-            this.isShowing = true;
-        }
+			let progressBar = document.createElement('span');
+			progressBar.id = 'progressBar';
+			progressBar.style = `
+				display: block;
+				width: 20%;
+				height: 100%;
+				background: orange;
+				border-radius: 2em;
+				margin-left: 80%;
+				margin: 0 .3em .5em 0;
+				opacity: 0;
+				transition: margin-left linear 500ms;
+				transition-timing-function: ease-in-out;
+			`;
 
-        static hide() {
-            Loader.container.style = "opacity : 0; transition: opacity 1s;";
-            setTimeout(() => {
-                Loader.container.remove();
-                this.isShowing = false;
-            }, 1000);
-        }
+			const progressBarOutside = document.createElement('div');
 
-        static addTask() {
-            let id = Loader.loaded.length;
-            //console.log('Loading tasks: ', ++Loader.actualTasks);
-            Loader.loaded.push(0);
-            return id;
-        }
+			progress.appendChild(progressBar);
+			progressWrapper.appendChild(this.logo);
+			progressOuter.appendChild(progress);
+			progressWrapper.appendChild(progressOuter);
 
-        static finish(id) {
-            clearInterval(Loader.barInterval);
+			container.appendChild(progressWrapper);
+			container.appendChild(blueWizLogo);
 
-            if (Loader.progressBar) {
-                Loader.progressBar.style.marginLeft = '0%';
-                Loader.progressBar.style.transition = '';
+			setTimeout(() => progressBar.style.opacity = 1, 600);
 
-                Loader.loaded[id] = 1;
-                Loader.updateBar();
-            }
-        }
+			Loader.barInterval = setInterval(() => {
+				if (Loader.progressBar.style.marginLeft == '0%') {
+					Loader.progressBar.style.marginLeft = '80%';
+				} else {
+					Loader.progressBar.style.marginLeft = '0%';
+				}
+			}, 500);
 
-        static progress(id, value, total) {
-            clearInterval(Loader.barInterval);
+			Loader.progressBar = progressBar;
+			Loader.container = container;
 
-            if (Loader.progressBar) {
-                Loader.progressBar.style.marginLeft = '0%';
-                Loader.progressBar.style.transition = '';
+			let app = document.body;
+			app.appendChild(container);
+			this.isShowing = true;
+		}
 
-                Loader.loaded[id] = value / total;
+		static hide() {
+			Loader.container.style = "opacity : 0; transition: opacity 1s;";
+			setTimeout(() => {
+				Loader.container.remove();
+				this.isShowing = false;
+			}, 1000);
+		}
 
-                Loader.updateBar();
-            }
+		static addTask() {
+			let id = Loader.loaded.length;
+			Loader.loaded.push(0);
+			return id;
+		}
 
-            return id;
-        }
+		static finish(id) {
+			clearInterval(Loader.barInterval);
 
-        static updateBar() {
-            let loadedTotal = 0;
+			if (Loader.progressBar) {
+				Loader.progressBar.style.marginLeft = '0%';
+				Loader.progressBar.style.transition = '';
 
-            for (let l of Loader.loaded) {
-                loadedTotal += l;
-            }
-            let percent = loadedTotal / Loader.tasks * 95 + 5;
-            // no more than 100%
-            if (percent > 100) {
-                percent = 100;
-            }
+				Loader.loaded[id] = 1;
+				Loader.updateBar();
+			}
+		}
 
-            Loader.progressBar.style.width = percent + '%';
-        }
+		static progress(id, value, total) {
+			clearInterval(Loader.barInterval);
 
-        static loadJS(path, callback) {
-            let p = path;
+			if (Loader.progressBar) {
+				Loader.progressBar.style.marginLeft = '0%';
+				Loader.progressBar.style.transition = '';
 
-            (function(p, cb) {
-                let xhr = new XMLHttpRequest();
-                xhr.open('GET', p, true);
+				Loader.loaded[id] = value / total;
 
-                let id = Loader.addTask();
+				Loader.updateBar();
+			}
 
-                xhr.onprogress = event => {
-                    if (Loader.progressBar) {
-                        id = Loader.progress(id, event.loaded, event.total);
-                    }
-                };
+			return id;
+		}
 
-                xhr.onload = () => {
-                    if (xhr.status != 200) {
-                        console.log(`Error ${xhr.status}: ${xhr.statusText}`);
-                    } else {
-                        if (!cb) {
-                            Loader.finish(id);
-                            let script = document.createElement('script');
-                            script.innerHTML = xhr.response;
-                            document.body.appendChild(script);
-                            return;
-                        }
+		static updateBar() {
+			let loadedTotal = 0;
 
-                        import('https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/js/wasm_loader.js?6').then(({
-                            init,
-                            process,
-                            verify,
-                            validate,
-                            get_yaw_pitch,
-                            reset_yaw_pitch,
-                            set_mouse_params,
-                            poll_gamepad
-                        }) => {
-                            window.verify = verify;
-                            window.validate = validate;
-                            window.get_yaw_pitch = get_yaw_pitch;
-                            window.reset_yaw_pitch = reset_yaw_pitch;
-                            window.set_mouse_params = set_mouse_params;
-                            window.poll_gamepad = poll_gamepad;
+			for (let l of Loader.loaded) {
+				loadedTotal += l;
+			}
+			let percent = loadedTotal / Loader.tasks * 95 + 5;
+			if (percent > 100) {
+				percent = 100;
+			}
 
-                            let encoder = new TextEncoder('utf-8');
-                            let decoder = new TextDecoder('utf-8');
-                            let data = encoder.encode(xhr.response);
-                            init().then(() => {
-                                process(data);
-                                cb();
-                            });
-                        });
-                    }
-                };
+			Loader.progressBar.style.width = percent + '%';
+		}
 
-                xhr.send();
-            })(path, callback);
-        }
-    }
+		static loadJS(path, callback) {
+			this._waitForJSCDN(() => {
+				this._doLoadJS(path, callback);
+			});
+		}
 
-    Loader.actualTasks = 0;
-    Loader.tasks = 17;
-    Loader.loaded = [];
+		static _doLoadJS(path, callback) {
+			const p = this._resolveurl(path);
+			if (!p) {
+				console.error('[Loader] Aborting load, invalid path:', path);
+				return;
+			}
 
-    window.Loader = Loader;
+			(function(url, cb) {
+				let xhr = new XMLHttpRequest();
+				xhr.open('GET', url, true);
+
+				let id = Loader.addTask();
+
+				xhr.onprogress = event => {
+					if (Loader.progressBar) {
+						id = Loader.progress(id, event.loaded, event.total);
+					}
+				};
+
+				xhr.onload = () => {
+					if (xhr.status != 200) {
+						console.log(`Error ${xhr.status}: ${xhr.statusText}`);
+					} else {
+						if (!cb) {
+							Loader.finish(id);
+							let script = document.createElement('script');
+							script.innerHTML = xhr.response;
+							document.body.appendChild(script);
+							return;
+						}
+
+						const wasmUrl = Loader._resolveurl('js/wasm_loader.js');
+						if (!wasmUrl) {
+							console.error('[Loader] Failed to resolve wasm_loader URL');
+							return;
+						}
+
+						import(wasmUrl).then(({
+							init,
+							process,
+							verify,
+							validate,
+							get_yaw_pitch,
+							reset_yaw_pitch,
+							set_mouse_params,
+							poll_gamepad
+						}) => {
+							window.verify = verify;
+							window.validate = validate;
+							window.get_yaw_pitch = get_yaw_pitch;
+							window.reset_yaw_pitch = reset_yaw_pitch;
+							window.set_mouse_params = set_mouse_params;
+							window.poll_gamepad = poll_gamepad;
+
+							let encoder = new TextEncoder('utf-8');
+							let data = encoder.encode(xhr.response);
+							init().then(() => {
+								process(data);
+								cb();
+							});
+						});
+					}
+				};
+
+				xhr.send();
+			})(p, callback);
+		}
+	}
+
+	// CDN-IGNORE-END
+
+	Loader.actualTasks = 0;
+	Loader.tasks = 17;
+	Loader.loaded = [];
+
+	window.Loader = Loader;
 
     function openFirebaseDb() {
         return new Promise((resolve, reject) => {
@@ -321,7 +399,7 @@
         window.location = 'https://shellshock.io' + window.location.search + window.location.hash;
     }
 
-    // Loader.blueWizSrcAlt = 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/blueWizard_logo_borg.webp';
+    // Loader.blueWizSrcAlt = 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/blueWizard_logo_borg.webp';
     Loader.show();
 </script><!-- title, seo meta and favicons -->
 <meta charset="UTF-8" />
@@ -544,7 +622,7 @@
 </style><!-- Styles & Fonts -->
 <link href="https://fonts.googleapis.com/css?family=Sigmar+One|Nunito:100,200,600,700,900" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css" crossorigin="anonymous">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/styles/style.min.css?1770151370"><script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/styles/style.min.css?1770152651"><script>
 function storageFactory(getStorage) {
 
 	const inMemoryStorage = {};
@@ -834,7 +912,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- Music audio tag -->
 <audio id="theAudio" preload="metadata"></audio>
 <!-- VueJS -->
-<script src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/js/vue/vue2.6.10.js"></script><!-- tools and varibles -->
+<script src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/js/vue/vue2.6.10.js"></script><!-- tools and varibles -->
 <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
 <script>
 	localStore.removeItem('brbTime');
@@ -1256,14 +1334,15 @@ const ShellStreak = {
 	function ssJSComplete () {
 		window.onloadingcomplete();
 	}
-
+	// CDN-IGNORE-START
 	let loaderInterval = setInterval(() => {
 		if (window.Loader) {
 			clearInterval(loaderInterval);
-			Loader.loadJS('https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/js/screenShot.js?1685656368');
-			Loader.loadJS('https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/js/shellshock.js?1770151388', ssJSComplete);
+			Loader.loadJS('js/screenShot.js');
+			Loader.loadJS('js/shellshock.js', ssJSComplete);
 		}
 	}, 100);
+	// CDN-IGNORE-END
 </script>		<!-- google tag manager noscript -->
 		<!-- Google Tag Manager (noscript) -->
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-K5MSJHJ"
@@ -1288,7 +1367,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <!-- <div class="video_ad_wrapper">
     <video id="asc_video_ad" class="video-js vjs-default-skin" controls preload="auto" width="640" height="360" muted="true" style="display: none;">
-        <source src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/video/tiny.mp4" type="video/mp4" />
+        <source src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/video/tiny.mp4" type="video/mp4" />
     </video>
 </div> -->
 		<div id="ss_background"></div>
@@ -1461,7 +1540,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </template>
     </large-popup>
 
-    <!-- <img v-if="blackFridayBanner" class="black-friday-banner" style="display: none" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/black-friday-banner.jpg" alt="Black Friday Sale"/> -->
+    <!-- <img v-if="blackFridayBanner" class="black-friday-banner" style="display: none" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/black-friday-banner.jpg" alt="Black Friday Sale"/> -->
 
     <!-- Popup: VIP store -->
     <large-popup id="subStorePopup" ref="subStorePopup" stop-key-capture="true" @popup-closed="onSharedPopupClosed" :overlay-close="true">
@@ -1584,7 +1663,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <!-- Popup: Anon warning message -->
     <small-popup v-if="isAnonymous" id="anonWarningPopup" ref="anonWarningPopup" :hide-close="true" :overlay-close="false" @popup-cancel="anonWarningPopupCancel" @popup-confirm="anonWarningPopupConfrim">
-        <template slot="header"><img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico_goldenEgg.svg" class="egg_icon" />{{ loc.account_anon_warn_popup_title }}! <img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico_goldenEgg.svg" class="egg_icon" /></template>
+        <template slot="header"><img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico_goldenEgg.svg" class="egg_icon" />{{ loc.account_anon_warn_popup_title }}! <img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico_goldenEgg.svg" class="egg_icon" /></template>
         <template slot="content">
             <p v-html="anonPopupContent"></p>
         </template>
@@ -1652,10 +1731,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <!-- <large-popup ref="kotcInstrucPopup" id="kotcInstrucPopup" :overlay-close="true" hide-confirm="true" hide-cancel="true">
         <template slot="content">
-            <img class="kotc-wordmark" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/kotc-wordmark.svg" alt="">
+            <img class="kotc-wordmark" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/kotc-wordmark.svg" alt="">
             <div class="kotc-how-to-play-wrapper box_absolute">
                 <h2 class="kotc-how-to-play-title text-center"><span class="roundme_md">{{ loc.home_kotc_popup_how_to }}</span><br />{{ loc.home_play }}!</h2>
-                <img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/kotc-arrow.svg" aria-hidden="true">
+                <img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/kotc-arrow.svg" aria-hidden="true">
             </div>
             <div class="display-grid grid-column-2-eq grid-gap-space-lg fullwidth ss_margintop_xxxxl">
                 <div class="img-container roundme_lg fullwidth step-one">
@@ -1673,7 +1752,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
             <div class="display-grid grid-column-2-eq grid-gap-space-lg roundme_md fullwidth ss_margintop_lg kotc-play-now step-three-wrapper">
                 <div class="fullwidth box_relative step-three">
-                    <img class="kotc-logo box_absolute" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/kotc-rooster.svg" alt="The King of the Coop Rooster">
+                    <img class="kotc-logo box_absolute" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/kotc-rooster.svg" alt="The King of the Coop Rooster">
 
                     <div>
                         <p class="text-center"><span class="sr-only">Step </span>3</p>
@@ -1682,11 +1761,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>
                 <div class="fullwidth f_col f_space_between">
                     <div class="display-grid grid-column-5-eq kotc-crowns">
-                    <img aria-hidden="true" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/kotc-crown.svg" alt="Crowns">
-                    <img aria-hidden="true" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/kotc-crown.svg" alt="Crowns">
-                    <img aria-hidden="true" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/kotc-crown.svg" alt="Crowns">
-                    <img aria-hidden="true" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/kotc-crown.svg" alt="Crowns">
-                    <img aria-hidden="true" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/kotc-crown.svg" alt="Crowns">
+                    <img aria-hidden="true" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/kotc-crown.svg" alt="Crowns">
+                    <img aria-hidden="true" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/kotc-crown.svg" alt="Crowns">
+                    <img aria-hidden="true" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/kotc-crown.svg" alt="Crowns">
+                    <img aria-hidden="true" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/kotc-crown.svg" alt="Crowns">
+                    <img aria-hidden="true" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/kotc-crown.svg" alt="Crowns">
                     </div>
                     <button class="ss_button btn_big btn_green bevel_green fullwidth" @click="onClickPlayKotcNow"><i class="fa fa-play fa-sm"></i> {{ loc.home_play }}</button>
                 </div>
@@ -1802,8 +1881,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </small-popup>
 
     <!-- <div id="kotc-play-kotc" class="kotc-play-kotc display-grid">
-		<img class="kotc-play-kotc-watermark" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/kotc-crown-indicator.svg" alt="">
-		<img class="kotc-play-kotc-arrow" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/kotc-arrow.svg" aria-hidden="true">
+		<img class="kotc-play-kotc-watermark" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/kotc-crown-indicator.svg" alt="">
+		<img class="kotc-play-kotc-arrow" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/kotc-arrow.svg" aria-hidden="true">
 	</div> -->
     <!-- #kotc-play-kotc -->
 
@@ -1813,8 +1892,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <h1 class="nospace">{{ loc.chrome_is_a_bugger_popup_title }}</h1>
             <p class="ss_marginbottom_xl" v-html="loc.chrome_is_a_bugger_popup_desc"></p>
             <div class="display-grid grid-column-2-eq">
-                <img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chromeIsABuggerPopup-guide-1.webp" alt="chrome guide 1 how to give shell mouse control">
-                <img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chromeIsABuggerPopup-guide-2.webp" alt="chrome guide 2 how to give shell mouse control">
+                <img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chromeIsABuggerPopup-guide-1.webp" alt="chrome guide 1 how to give shell mouse control">
+                <img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chromeIsABuggerPopup-guide-2.webp" alt="chrome guide 2 how to give shell mouse control">
             </div>
         </template>
     </large-popup>
@@ -2174,22 +2253,22 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 		},
 
 		lazyImages: {
-			homeEgg1: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/eggPose05.webp',
-			homeEgg2: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/eggPose01.webp',
-			vipEmblem: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/vip-club/vip-club-popup-emblem.webp',
-			vipPayment: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/store/UI_paymentOptions.webp',
-			vipPopupBg: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/vip-club/vip-club-popup-background.webp',
-			chwPopup: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/ssAd_chicknWinner800x600-min.webp',
-			rickRoll: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/rickroll.gif',
-			adBlockPopup: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/shellshockers-unite-lg.webp',
-			vipImportant: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/vip-club/very-important-poultry.webp',
-			eggPackSm: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/egg_pack_small.webp',
-			goldenEgg: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico_goldenEgg.svg',
-			eggOrgGiveStuff: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/egg-org/eggOrg_timeTravel_splash800x600-min.webp',
-			welcomePack: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/eggstra-value-pack.webp',
-			welcomePackPopup: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/welcome-pass-popup.webp',
-			kotcArrow: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/kotc-arrow.svg',
-			chwChest: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/chicken-nugget/chw-loot-btn.webp'
+			homeEgg1: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/eggPose05.webp',
+			homeEgg2: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/eggPose01.webp',
+			vipEmblem: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/vip-club/vip-club-popup-emblem.webp',
+			vipPayment: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/store/UI_paymentOptions.webp',
+			vipPopupBg: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/vip-club/vip-club-popup-background.webp',
+			chwPopup: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/ssAd_chicknWinner800x600-min.webp',
+			rickRoll: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/rickroll.gif',
+			adBlockPopup: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/shellshockers-unite-lg.webp',
+			vipImportant: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/vip-club/very-important-poultry.webp',
+			eggPackSm: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/egg_pack_small.webp',
+			goldenEgg: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico_goldenEgg.svg',
+			eggOrgGiveStuff: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/egg-org/eggOrg_timeTravel_splash800x600-min.webp',
+			welcomePack: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/eggstra-value-pack.webp',
+			welcomePackPopup: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/welcome-pass-popup.webp',
+			kotcArrow: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/kotc-arrow.svg',
+			chwChest: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/chicken-nugget/chw-loot-btn.webp'
 		},
 
 		notification: null,
@@ -2442,7 +2521,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     music: {
         isMusic: false,
-        musicJson: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/data/sponsors.json',
+        musicJson: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/data/sponsors.json',
         musicSrc: '',
         theAudio: '',
         playing: false,
@@ -2507,12 +2586,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 		hero: {
 			name: 'Heroes',
 			items: [],
-			img: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/shell_E&E_good_popup.webp',
+			img: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/shell_E&E_good_popup.webp',
 		},
 		monster: {
 			name: 'Monsters',
 			items: [],
-			img: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/shell_E&E_evil_popup.webp',
+			img: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/shell_E&E_evil_popup.webp',
 		},
 	},
 
@@ -2840,30 +2919,30 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             'RT',
             'Select',
             'Start',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_stickleft.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_stickright.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_dpadup.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_dpaddown.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_dpadleft.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_dpadright.svg">'
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_stickleft.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_stickright.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_dpadup.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_dpaddown.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_dpadleft.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_dpadright.svg">'
         ],
         ps: [
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_cross.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_circle.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_square.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_triangle.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_cross.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_circle.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_square.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_triangle.svg">',
             'LB',
             'RB',
             'LT',
             'RT',
             'Select',
             'Start',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_stickleft.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_stickright.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_dpadup.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_dpaddown.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_dpadleft.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_dpadright.svg">'
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_stickleft.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_stickright.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_dpadup.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_dpaddown.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_dpadleft.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_dpadright.svg">'
         ],
         switchpro: [
             'B',
@@ -2876,12 +2955,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             'RT',
             '-',
             '+',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_stickleft.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_stickright.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_dpadup.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_dpaddown.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_dpadleft.svg">',
-            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/controller/button_dpadright.svg">'
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_stickleft.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_stickright.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_dpadup.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_dpaddown.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_dpadleft.svg">',
+            '<img class="ss_buttonbind_icon" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/controller/button_dpadright.svg">'
         ],
         generic: [
             '0',
@@ -2943,17 +3022,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 		ready: false,
 
 		imgs: {
-			// loot: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_sleep.svg',
-			// speak: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_speak.svg',
-			// limit: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_daily_limit.svg',
-			// sleep: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_sleep.svg',
-			// idle: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_idle.svg',
+			// loot: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_sleep.svg',
+			// speak: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_speak.svg',
+			// limit: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_daily_limit.svg',
+			// sleep: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_sleep.svg',
+			// idle: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_idle.svg',
 
-			idle: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/alt/cyborg/chickLoop_idle.svg',
-			speak: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/alt/cyborg/chickLoop_speak.svg',
-			limit: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/alt/cyborg/chickLoop_sleep.svg',
-			sleep: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/alt/cyborg/chickLoop_sleep.svg',
-			loot: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/alt/cyborg/chickLoop_sleep.svg',
+			idle: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/alt/cyborg/chickLoop_idle.svg',
+			speak: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/alt/cyborg/chickLoop_speak.svg',
+			limit: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/alt/cyborg/chickLoop_sleep.svg',
+			sleep: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/alt/cyborg/chickLoop_sleep.svg',
+			loot: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/alt/cyborg/chickLoop_sleep.svg',
 		}
 	},
 
@@ -3341,8 +3420,8 @@ function createDisplayAdComponent(templateId) {
                 now: new Date(),
 				day: 0,
 				hours: 0,
-				doubleEggSoonImgSrc: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/events/2XEggWeekend_cominSoon.webp',
-				doubleEggLiveImgSrc: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/events/2XEggWeekend_onNow.webp',
+				doubleEggSoonImgSrc: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/events/2XEggWeekend_cominSoon.webp',
+				doubleEggLiveImgSrc: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/events/2XEggWeekend_onNow.webp',
             };
         },
         methods: {
@@ -3479,7 +3558,7 @@ var comp_spinner_overlay = {
 			tipKey: null,
 			tips: [],
 			tip: '',
-			eggGuyImg: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/shellShockers_loadingTipEgg.webp',
+			eggGuyImg: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/shellShockers_loadingTipEgg.webp',
 			goodBrowser: true,
 			browserTipShown: false,
 		}
@@ -4527,11 +4606,11 @@ var comp_settings = {
 			musicStatChg: '',
 			currentRegion: '',
 			icons: {
-				keyboard: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_keyboard.svg',
-				mouse: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_mouse.svg',
-				gamePad: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_gamepad.svg',
-				monitor: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_monitor.svg',
-				speaker: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_speaker.svg'
+				keyboard: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_keyboard.svg',
+				mouse: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_mouse.svg',
+				gamePad: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_gamepad.svg',
+				monitor: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_monitor.svg',
+				speaker: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_speaker.svg'
 			}
 		}
 	},
@@ -4973,12 +5052,12 @@ var comp_settings = {
     <div id="controls_panel" class="font-700 line-height-1-2">
         <div class="box_relative display-grid grid-template tutorial-labels">
         <span v-for="(item, idx) in controls.keys" :key="idx" v-html="loc[item.locKey]" class="box_absolute" :class="item.cls"></span>
-        <img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/tutorial/ss_tutorial_Keyboard.webp" class="tutorial-keyboard" alt="Tutorial keyboard image">
-        <img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/tutorial/ss_tutorial_Mouse.webp" class="tutorial-mouse" alt="Tutorial mouse image">
+        <img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/tutorial/ss_tutorial_Keyboard.webp" class="tutorial-keyboard" alt="Tutorial keyboard image">
+        <img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/tutorial/ss_tutorial_Mouse.webp" class="tutorial-mouse" alt="Tutorial mouse image">
     </div>
     <div class="tutorial-content display-grid align-items-center center_h">
         <div>
-            <img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/tutorial/ss_tutorial_EggTarget.webp" class="tutorial-egg" alt="Tutorial egg image">
+            <img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/tutorial/ss_tutorial_EggTarget.webp" class="tutorial-egg" alt="Tutorial egg image">
         </div>
         <ul class="tutorial-list list-no-style">
             <li class="text-left">{{ loc.tutorial_point_1 }}</li>
@@ -5533,8 +5612,8 @@ var FactionsPopup = {
   computed: {
     eggOrgLogo() {
       return this.playerFaction === 1
-        ? 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/egg-org-red.png'
-        : 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/egg-org-blue.png';
+        ? 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/egg-org-red.png'
+        : 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/egg-org-blue.png';
     },
 	paraDescTxt() {
 		if (!this.firebaseId) {
@@ -5921,9 +6000,9 @@ var comp_item = {
 		},
 		bannerIconImg() {
 			if (this.isPremium) {
-				return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/store/PremiumTag.webp';
+				return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/store/PremiumTag.webp';
 			} else if (this.isVipItem) {
-				return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/store/VIPTag.webp';
+				return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/store/VIPTag.webp';
 			}
 		},
 		itemName() {
@@ -5945,7 +6024,7 @@ var comp_item = {
 		<section id="chickn-winner-wrapper" class="egg-chick-wrapper f_row roundme_lg box_relative justify-content-center">
 			<div v-show="eggGameReady" class="egg-chick-box box_relative" v-for="egg in eggs" :key="egg.id">
 				<div v-if="showAmountRewarded && busted && egg.value > 5" class="text-center chw-reward-amount box_absolute">
-					<h2 class="box_relative shadow_grey">{{ showAmountRewarded }} <img class="chw-winner-egg" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_goldenEgg.svg" /></h2>
+					<h2 class="box_relative shadow_grey">{{ showAmountRewarded }} <img class="chw-winner-egg" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_goldenEgg.svg" /></h2>
 				</div>
 				<img class="incentivized-egg-chick box_relative" :class="eggClass(egg.value)" @click="checkIfReady" :src="eggSrc(egg.value)" :id="egg.id">
 				<div v-if="rewardHasItem && egg.value > 5" class="centered">
@@ -5988,7 +6067,7 @@ var comp_chickn_winner_popup = {
 			clickedIdx: 0,
 			eggs: [{id:'eggOne', value: 0, active: true, hide: 0}, {id:'eggTwo', value: 0, active: true, hide: 0}, {id:'eggThree', value: 0, active: true, hide: 0}],
 			isMiniGameComplete: false,
-			bustedSrc: `https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/incentivized-mini-game/svg/Egg07.svg`,
+			bustedSrc: `https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/incentivized-mini-game/svg/Egg07.svg`,
 			busted: false,
 			showEggGame: false,
 			clickBeforeReady: false,
@@ -6003,14 +6082,14 @@ var comp_chickn_winner_popup = {
         },
 		eggSrc(count) {
 			if (count > 6) {
-				return `https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/incentivized-mini-game/svg/Egg06.svg`;
+				return `https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/incentivized-mini-game/svg/Egg06.svg`;
 			}
 			return `img/incentivized-mini-game/svg/Egg0${count}.svg`;
 		},
 
 		eggSrcBusted() {
 			setTimeout(() => {
-				return `https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/incentivized-mini-game/svg/Egg07.svg`;
+				return `https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/incentivized-mini-game/svg/Egg07.svg`;
 			}, 2424);
 		},
 
@@ -6428,7 +6507,7 @@ var comp_social_panel = {
         props: ['loc', 'screens', 'currentScreen', 'ui', 'chw', 'firebaseId', 'playClicked'],
         data: function() {
             return {
-                chest: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chw-loot-btn.webp'
+                chest: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chw-loot-btn.webp'
             }
         },
         methods: {
@@ -6476,14 +6555,14 @@ var comp_social_panel = {
             },
             chwChickSrc() {
                 if (this.chw.limitReached || this.isChicknWinnerError) {
-                    // return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_daily_limit.svg';
+                    // return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_daily_limit.svg';
                     return this.chw.imgs.limit;
                 } else {
                     if (!this.chw.ready) {
-                        // return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_sleep.svg';
+                        // return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_sleep.svg';
                         return this.chw.imgs.sleep;
                     } else {
-                        // return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_speak.svg';
+                        // return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_speak.svg';
                         return this.chw.imgs.speak;
                     }
                 }
@@ -6532,7 +6611,7 @@ var comp_social_panel = {
 <script id="home-screen-template" type="text/x-template">
     <div>
 		<!-- <div class="twitch-btn-wrap box_absolute">
-			<button v-if="ui.events.twitch && !extern.inGame" class="ss_button twitch-btn btn_sm box_relative text-right" @click="onTwitchDropsClick">Twitch Drops Live!<span class="twitch-btn-status" v-html="isTwitchLinked"></span> <img class="box_absolute" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/twitch/img/twitch-drops-parachute.svg" alt=""></button>
+			<button v-if="ui.events.twitch && !extern.inGame" class="ss_button twitch-btn btn_sm box_relative text-right" @click="onTwitchDropsClick">Twitch Drops Live!<span class="twitch-btn-status" v-html="isTwitchLinked"></span> <img class="box_absolute" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/twitch/img/twitch-drops-parachute.svg" alt=""></button>
 		</div> -->
 
 		<house-ad-big id="big-house-ad" ref="bigHouseAd" :useAd="ui.houseAds.big" @big-house-ad-closed="onBigHouseAdClosed"></house-ad-big>
@@ -6751,7 +6830,7 @@ var comp_social_panel = {
                 this.mapIdx = Math.randomInt(0, this.mapList.length);
                 this.map = this.mapList[this.mapIdx];
                 this.mapLocKey = this.map.locKey;
-                this.mapImgPath = this.mapImgBasePath + this.map.filename + '.png?' + this.map.hash;
+                this.mapImgPath = window.JSCDN + this.mapImgBasePath + this.map.filename + '.png?' + this.map.hash;
             },
             onRandomMapClick() {
                 BAWK.play('ui_onchange');
@@ -6798,7 +6877,7 @@ var comp_social_panel = {
 
                 console.log('Random map deets: ', gameTypeShortName, vueData.maps[idx].modes[gameTypeShortName]);
 
-                this.mapImgPath = this.mapImgBasePath + vueData.maps[idx].filename + '.png?' + vueData.maps[idx].hash;
+                this.mapImgPath = window.JSCDN + this.mapImgBasePath + vueData.maps[idx].filename + '.png?' + vueData.maps[idx].hash;
                 this.mapLocKey = vueData.maps[idx].locKey;
                 this.mapIdx = idx;
             },
@@ -6871,7 +6950,7 @@ var comp_social_panel = {
                             break;
                         }
                     }
-                    this.mapImgPath = this.mapImgBasePath + this.mapList[idx].filename + '.png?' + this.mapList[idx].hash;
+                    this.mapImgPath = window.JSCDN + this.mapImgBasePath + this.mapList[idx].filename + '.png?' + this.mapList[idx].hash;
                     this.mapLocKey = this.mapList[idx].locKey;
                     this.mapIdx = idx;
                     BAWK.play('ui_onchange');
@@ -7279,8 +7358,8 @@ var comp_social_panel = {
         computed: {
             iconSrc() {
                 return this.isAnonymous ?
-                    'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico_goldenEgg_callout.svg' :
-                    'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico_goldenEgg.svg';
+                    'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico_goldenEgg_callout.svg' :
+                    'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico_goldenEgg.svg';
             },
             formattedBalance() {
                 // Add number formatting for large values
@@ -7747,7 +7826,7 @@ var comp_social_panel = {
                 // Fully linked account
                 return {
                     text: currentUser.username || this.loc.sign_in_cg_linked,
-                    img: currentUser.profilePictureUrl || 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/crazy-games-logo.png',
+                    img: currentUser.profilePictureUrl || 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/crazy-games-logo.png',
                     isLinked: localUser?.hasLinked || false,
                     isLoggedIn: true
                 };
@@ -7770,7 +7849,7 @@ var comp_social_panel = {
                         userLoggedIn: false,
                         isAnonymous: true,
                     };
-                    return user?.profilePictureUrl || 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/crazy-games-logo.png';
+                    return user?.profilePictureUrl || 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/crazy-games-logo.png';
                 }
                 return '';
             },
@@ -7840,7 +7919,7 @@ var comp_social_panel = {
             createBaseState(text) {
                 return {
                     text: text,
-                    img: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/crazy-games-logo.png',
+                    img: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/crazy-games-logo.png',
                     isLinked: false,
                     isLoggedIn: false
                 };
@@ -8038,7 +8117,7 @@ var comp_social_panel = {
 				<weapon-select-panel id="weapon_select" class="justify-content-center centered_x" :loc="loc" :account-settled="isGameReady" :current-class="currentClass" :current-screen="showScreen" :screens="screens" :play-clicked="playClicked" @changed-class="onChangedClass"></weapon-select-panel>
 				<div class="play-panel-btn-group display-grid grid-auto-flow-column gap-1 centered_x">
 					<button @click="onJoinPrivateGameClick" class="is-for-play ss_button btn_big btn_blue_light bevel_blue_light btn_play_w_friends display-grid align-items-center box_relative">
-						<!-- <img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico_star_gold.svg" class="icon-star top-left"/> -->
+						<!-- <img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico_star_gold.svg" class="icon-star top-left"/> -->
 						<span>{{ loc.p_privatematch_friends }}</span>
 					</button>
 					<button @click="onPlayButtonClick" class="is-for-play ss_button btn_big btn_green bevel_green play-button box_relative" v-html="playBtn"></button>
@@ -8605,7 +8684,7 @@ var comp_newsfeed_panel = {
 		<div class="chicken-panel--upgraded" v-show="doUpgraded && !isSubscriber">
 			<div class="tool-tip tool-tip--right">
 				<span v-if="nugCounter" id="nugget-countdown">{{nugCounter}} Minutes remaining.</span>
-				<img class="upgraded-nugget" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/goldenNugget_static.webp">
+				<img class="upgraded-nugget" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/goldenNugget_static.webp">
 				<!-- <div id="nugget-timer" class="nugget-timer--wrapper">
 					<div class="timer-background"></div>
 					<div class="timer spinner"></div>
@@ -8616,11 +8695,11 @@ var comp_newsfeed_panel = {
 		</div>
 		
 		<div class="chicken-panel--no-upgraded" v-show="!doUpgraded">
-			<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/starburst.webp" @click="onChickenClick" class="clickme starburst">
-			<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/goldenNuggetGIFWIP.gif" @click="onChickenClick" class="clickme nugget-chick">
+			<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/starburst.webp" @click="onChickenClick" class="clickme starburst">
+			<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/goldenNuggetGIFWIP.gif" @click="onChickenClick" class="clickme nugget-chick">
 		
 			<div id="buyPassChickenSpeech">
-				<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/speechtail.webp" class="buyPassChickenSpeechTail">
+				<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/speechtail.webp" class="buyPassChickenSpeechTail">
 				<span v-html="loc.chicken_cta"></span>
 			</div>
 		</div>
@@ -8654,7 +8733,7 @@ var comp_chicken_panel = {
 				<button class="ss_button_as_text" target="_blank" @click="openInNewTab('https://www.bluewizard.com/privacypolicy')">{{ loc.footer_privacypolicy }}</button> | 
 				<button class="ss_button_as_text" target="_blank" @click="openInNewTab('https://bluewizard.com/terms/')">{{ loc.footer_termsofservice }}</button> | 
 				<button class="ss_button_as_text" @click="onHelpClick">{{ loc['account_title_faq'] }}</button> | 
-				<button class="ss_button_as_text" target="_blank" @click="openInNewTab('https://www.bluewizard.com')">&copy; 2026 <img class="main-footer--logo-blue-wiz-mini" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/blue-wizard-logo-tiny-min.webp" :alt="loc.footer_bluewizard + ' logo'"><span class="hideme">{{ loc.footer_bluewizard }}</span></button>
+				<button class="ss_button_as_text" target="_blank" @click="openInNewTab('https://www.bluewizard.com')">&copy; 2026 <img class="main-footer--logo-blue-wiz-mini" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/blue-wizard-logo-tiny-min.webp" :alt="loc.footer_bluewizard + ' logo'"><span class="hideme">{{ loc.footer_bluewizard }}</span></button>
 			</nav>
 		</section>
 	</footer>
@@ -8713,7 +8792,7 @@ var comp_footer_links_panel = {
 		data: function () {
             return {
 				isVisible: true,
-				portalImage: 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/free-games-io2.webp',
+				portalImage: 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/free-games-io2.webp',
 				portalAltText: 'Free Games .io logo'
 			}
 		},
@@ -8866,7 +8945,7 @@ var comp_footer_links_panel = {
 				</div>
 				<div class="display-grid grid-column-2-eq align-items-center">
 					<div class="player-challenge-single-reward text-shadow-black-40 display-grid align-items-center grid-column-auto-1 gap-sm">
-						<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico_goldenEgg.svg"> {{ reward }}
+						<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico_goldenEgg.svg"> {{ reward }}
 					</div>
 					<div class="player-challenge-single-action justify-self-end margin-0 box_relative" :class="actionState">
 						<div v-show="showActionBtn" class="player-challenge-tool-tip box_relative">
@@ -9537,7 +9616,7 @@ var CompMediaPanel = {
         
         methods: {
 			fetchJson() {
-				extern.requestJson('https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/data/shellNews.json', (data) => {
+				extern.requestJson('https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/data/shellNews.json', (data) => {
 					if (crazyGamesActive) {
 						const newNews = data.filter((item, idx) => {
 							if (item.hideOnCrazyGames !== null && item.hideOnCrazyGames) {
@@ -9552,8 +9631,8 @@ var CompMediaPanel = {
 					this.news = data;
 
 				});
-				extern.requestJson('https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/data/shellYouTube.json', (data) => this.youTube = data);
-				extern.requestJson('https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/data/twitchStreams.json', (streams) => {
+				extern.requestJson('https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/data/shellYouTube.json', (data) => this.youTube = data);
+				extern.requestJson('https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/data/twitchStreams.json', (streams) => {
 						
 						streams.sort((a, b) => {
 							return b.viewers - a.viewers;
@@ -9979,7 +10058,7 @@ var CompMediaPanel = {
 		<!-- logo -->
 		<div id="logo" class="box_relative">
 			<a href="https://www.shellshock.io" @click="onLogoClick"><img class="home-screen-logo" :src="logo" @click="onLogoClick"></a>
-			<!-- <img v-if="eggOrg" class="egg-org-logo" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/egg-org/logo_EggOrg.svg"> -->
+			<!-- <img v-if="eggOrg" class="egg-org-logo" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/egg-org/logo_EggOrg.svg"> -->
 		</div>
 		<transition name="fade">
 			<div class="box_relative" v-show="!playClicked">
@@ -10101,12 +10180,12 @@ var COMPCHWBUBBLE = {
 		},
 		chwChickSrc() {
 			if (this.limitReached || this.error) {
-				return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_daily_limit.svg';
+				return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_daily_limit.svg';
 			} else {
 				if (!this.ready) {
-					return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_sleep.svg';
+					return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_sleep.svg';
 				} else {
-					return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_speak.svg';
+					return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_speak.svg';
 				}
 			}
 		},
@@ -10685,11 +10764,11 @@ var STATSPOPUP = {
 			<!-- The meter bar itself -->
 			<div class="faction-meter-shell ss-shell-meter centered_x">
 				<div id="ss-shell-gauge" class="gauge">
-					<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/shadows-meter.png" class="centered_x meter-gauge">
-					<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/red-glow.png" class="glow red" v-if="leadingFaction === 0">
-					<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/blue-glow.png" class="glow blue" v-if="leadingFaction === 1">
+					<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/shadows-meter.png" class="centered_x meter-gauge">
+					<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/red-glow.png" class="glow red" v-if="leadingFaction === 0">
+					<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/blue-glow.png" class="glow blue" v-if="leadingFaction === 1">
 					<div ref="needle" class="needle">
-						<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/meter_marker.png" class="centered_x">
+						<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/meter_marker.png" class="centered_x">
 					</div>
 				</div>
 			</div>
@@ -10703,7 +10782,7 @@ var STATSPOPUP = {
 					@mouseenter="hoverFactionA = true" 
 					@mouseleave="hoverFactionA = false"
 					:class="{ 'faction-hover': hoverFactionA }">
-					<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/ico_crossbones.svg" alt=""> 
+					<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/ico_crossbones.svg" alt=""> 
 					<span>{{ hoverFactionA ? factionAHoverValue : factionATotals }}</span>
 				</div>
 				<div class="text-center faction-label-txt text-uppercase font-800 faction-txt-red">{{ loc.faction_a_title }}</div>
@@ -10713,7 +10792,7 @@ var STATSPOPUP = {
 					@mouseenter="hoverFactionB = true" 
 					@mouseleave="hoverFactionB = false"
 					:class="{ 'faction-hover': hoverFactionB }">
-					<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/ico_crossbones.svg" alt=""> 
+					<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/ico_crossbones.svg" alt=""> 
 					<span>{{ hoverFactionB ? factionBHoverValue : factionBTotals }}</span>
 				</div>
 				<div class="text-center faction-label-txt  text-uppercase font-800 faction-txt-blue">{{ loc.faction_b_title }}</div>
@@ -11270,9 +11349,9 @@ var comp_shell_tips = {
             },
             twitchDropsBtnImgSrs() {
                 if (this.twitchLinked) {
-                    return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/../img/events/twitch-drops-btn-linked.webp';
+                    return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/../img/events/twitch-drops-btn-linked.webp';
                 }
-                return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/../img/events/twitch-drops-btn-link-now.webp';
+                return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/../img/events/twitch-drops-btn-link-now.webp';
             },
             isTwitchLinked() {
                 if (this.twitchLinked) return '<i class="fas fa-check-circle text_twitch_yellow"></i>';
@@ -11402,7 +11481,7 @@ var comp_gold_chicken_popup = {
 					<canvas id="buyItemCanvas" ref="buyItemCanvas" width="250" height="250"></canvas>
 				</div>
 				<div class="f_row f_center">
-					<img v-if="!isBuyingItemPrem" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_goldenEgg.webp" class="egg_icon"/>
+					<img v-if="!isBuyingItemPrem" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_goldenEgg.webp" class="egg_icon"/>
 					<i v-else class="fas fa-dollar-sign"></i>
 					<h1>{{ (equip.buyingItem) ? equip.buyingItem.price : '' }}</h1>
 				</div>
@@ -11435,7 +11514,7 @@ var comp_gold_chicken_popup = {
 					<div>
 						<item :loc="loc" :item="equip.physicalUnlockPopup.item" :isSelected="false" :show-item-only="true"></item>
 						<div class="f_row f_center">
-							<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_goldenEgg.webp" class="egg_icon"/>
+							<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_goldenEgg.webp" class="egg_icon"/>
 							<h1>{{ loc.p_buy_special_price }}</h1>
 						</div>
 					</div>
@@ -11465,7 +11544,7 @@ var comp_gold_chicken_popup = {
 				<div id="hvsm-popup-item-grid-wrap" v-show="isOnEquipModeFeatured || isEquipModeShop" class="hvsm-popup-item-grid-wrap paddings_lg display-grid  grid-auto-flow-column align-items-center justify-content-center">
 					<div class="hvsm-popup-item-grid">
 						<header>
-							<img class="display-block center_h" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/shell_E&E_good_popup.webp" alt="Heroes logo">
+							<img class="display-block center_h" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/shell_E&E_good_popup.webp" alt="Heroes logo">
 							<h4 class="text-center text-uppercase nospace text_blue5">Heroes</h4>
 						</header>
 						<item-grid id="hvsmHeroesItemGrid" ref="hvsmHeroesItemGrid" :loc="loc" :items="equip.hvsmHeroItems" :has-buy-btn="false" :selectedItem="equip.selectedItem" @item-selected="onItemSelected" :in-shop="isInShop" :in-inventory="isEquipModeInventory"></item-grid>
@@ -11493,7 +11572,7 @@ var comp_gold_chicken_popup = {
 					</div>
 					<div class="hvsm-popup-item-grid">
 						<header>
-							<img class="display-block center_h" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/shell_E&E_evil_popup.webp" alt="Monsters logo">
+							<img class="display-block center_h" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/shell_E&E_evil_popup.webp" alt="Monsters logo">
 							<h4 class="text-center text-uppercase nospace text_blue5">Monsters</h4>
 						</header>
 						<item-grid id="hvsmMonsterItemGrid" ref="hvsmMonsterItemGrid" :loc="loc" :items="equip.hvsmMonsterItems" :has-buy-btn="false" :selectedItem="equip.selectedItem" @item-selected="onItemSelected" :in-shop="isInShop" :in-inventory="isEquipModeInventory"></item-grid>
@@ -11513,28 +11592,28 @@ var comp_gold_chicken_popup = {
 		<div id="equip_equippedslots">
 			<div class="equip_item roundme_lg clickme f_row f_center" @click="onClick(itemType.Primary)">
 				<item :loc="loc" id="primary_item" ref="primary_item" v-if="primaryItem" :item="primaryItem" class="equip_icon" :equippedSlot="true"></item>
-				<div v-if="!primaryItem" class="equip_icon equip_icon_hat equip_icon_no_item"><img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/inventory-icons/ico_weaponPrimary.svg" alt="Primary equip slot"></div>
+				<div v-if="!primaryItem" class="equip_icon equip_icon_hat equip_icon_no_item"><img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/inventory-icons/ico_weaponPrimary.svg" alt="Primary equip slot"></div>
 			</div>
 
 			<div class="equip_item roundme_lg clickme f_row f_center" @click="onClick(itemType.Secondary)">
 				<item :loc="loc" id="secondary_item" ref="secondary_item" v-if="secondaryItem" :item="secondaryItem" class="equip_icon" :equippedSlot="true"></item>
-				<div v-if="!secondaryItem" class="equip_icon equip_icon_hat equip_icon_no_item"><img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/inventory-icons/ico_weaponSecondary.svg" alt="Secondary equip slot"></div>
+				<div v-if="!secondaryItem" class="equip_icon equip_icon_hat equip_icon_no_item"><img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/inventory-icons/ico_weaponSecondary.svg" alt="Secondary equip slot"></div>
 			</div>
 
 			<div class="equip_item roundme_lg clickme f_row f_center" @click="onClick(itemType.Grenade)">
 				<item :loc="loc" id="grenade_item" ref="grenade_item" v-if="grenadeItem" :item="grenadeItem" class="equip_icon" :equippedSlot="true"></item>
-				<div v-if="!grenadeItem" class="equip_icon equip_icon_hat equip_icon_no_item"><img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/inventory-icons/ico_grenade.svg" alt="Grenade equip slot"></div>
+				<div v-if="!grenadeItem" class="equip_icon equip_icon_hat equip_icon_no_item"><img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/inventory-icons/ico_grenade.svg" alt="Grenade equip slot"></div>
 
 			</div>
 			
 			<div class="equip_item roundme_lg clickme f_row f_center" @click="onClick(itemType.Hat)">
 				<item :loc="loc" id="hat_item" ref="hat_item" v-if="hatItem" :item="hatItem" :equippedSlot="true"></item>
-				<div v-if="!hatItem" class="equip_icon equip_icon_hat equip_icon_no_item"><img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/inventory-icons/ico_hat.svg" alt="Hat item slot"></div>
+				<div v-if="!hatItem" class="equip_icon equip_icon_hat equip_icon_no_item"><img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/inventory-icons/ico_hat.svg" alt="Hat item slot"></div>
 			</div>
 			
 			<div class="equip_item roundme_lg clickme f_row f_center" @click="onClick(itemType.Stamp)">
 				<item :loc="loc" id="stamp_item" ref="stamp_item" v-if="stampItem" :item="stampItem" :equippedSlot="true"></item>
-				<div v-if="!stampItem" class="equip_icon equip_icon_stamp equip_icon_no_item"><img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/inventory-icons/ico_stamp.svg" alt="Stamp item slot"></div>
+				<div v-if="!stampItem" class="equip_icon equip_icon_stamp equip_icon_no_item"><img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/inventory-icons/ico_stamp.svg" alt="Stamp item slot"></div>
 			</div>
 		</div>
 	</div>
@@ -11574,7 +11653,7 @@ var comp_equipped_slots = {
 		<div id="equip_free_colors" class="display-grid text-center grid-auto-flow-column align-items-center ">
 			<!-- <svg v-for="(c, index) in freeColors" class="eggIcon equip_color" :style="{ color: c }" :class="isSelectedClass(index)" @click="onClick(index)"><use xlink:href="#icon-egg"></use></svg> -->
 			<span v-for="(c, index) in freeColors" class="box_relative roundme_sm egg-color-icon " @click="onClick(index)">
-				<img v-if="index === colorIdx" class="centered_x color-select-arrow" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico-arrow-colorPicker.svg"/>
+				<img v-if="index === colorIdx" class="centered_x color-select-arrow" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico-arrow-colorPicker.svg"/>
 				<i  class="fas fa-egg" :style="{ color: c }" :class="isSelectedClass(index)"></i>
 			</span>
 		<!-- </div>
@@ -11582,7 +11661,7 @@ var comp_equipped_slots = {
 
 			<!-- <svg v-for="(c, index) in paidColors" class="eggIcon equip_color" :style="{ color: c }" :class="isSelectedClass(index + freeColors.length)" @click="onClick(index + freeColors.length)"><use :xlink:href="getExtraColorEggIcon"></use></svg> -->
 			<span v-for="(c, index) in paidColors" class="box_relative roundme_sm egg-color-icon" @click="onClick(index + freeColors.length)">
-				<img v-if="colorIdx === (index + freeColors.length)" class="centered_x color-select-arrow" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico-arrow-colorPicker.svg"/>
+				<img v-if="colorIdx === (index + freeColors.length)" class="centered_x color-select-arrow" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico-arrow-colorPicker.svg"/>
 				<span class="fa-stack roundme_sm" :class="isSelectedClass(index + freeColors.length)">
 					<i class="fas fa-egg fa-stack-1x" :style="{ color: c }"></i>
 					<i v-if="!isUpgrade" class="fas fa-lock fa-stack-1x text_white"></i>
@@ -11645,7 +11724,7 @@ var comp_item_timer = {
 
 		<button v-if="!playerNeedsMoreEggs && !isItemOwned" class="ss_button btn_green bevel_green btn_md btn_buy_item display-grid fullwidth font-nunito f_row align-items-center justify-content-center box_relative" @click="onBuyClick">
 			{{priceTagText}}
-			<img v-if="!isPremium" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_goldenEgg.webp" class="ss_marginright_sm ss_marginleft">
+			<img v-if="!isPremium" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_goldenEgg.webp" class="ss_marginright_sm ss_marginleft">
 			<i v-else class="fas fa-dollar-sign ss_marginleft"></i>
 			{{ item.price }}
 		</button>
@@ -11727,11 +11806,11 @@ var comp_item_timer = {
 </script><script id="physical-tag-template" type="text/x-template">
 	<div id="equip_get_physical_item" class="equip_purchase_items">
 		<div id="equip_pricetag" class="equip_pricetag shadow_blue2">
-			<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/pricetag_left.webp">
+			<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/pricetag_left.webp">
 			<div class="equip_pricetag__tag equip_pricetag__is_special_tag">
-				<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_goldenEgg.webp" class="ss_marginright">{{ loc.p_buy_special_price }}
+				<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_goldenEgg.webp" class="ss_marginright">{{ loc.p_buy_special_price }}
 			</div>
-			<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/pricetag_right.webp">
+			<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/pricetag_right.webp">
 		</div>
 		<button class="ss_button btn_yolk bevel_yolk is_special_get_btn" @click="onBuyClick">{{ loc.p_chicken_goldbutton }}</button>
 	</div>
@@ -11934,7 +12013,7 @@ var comp_item_grid = {
                     <p v-if="showSubtitle" class="eggshop_subtitle font-sigmar" :class="subTitleCls" v-html="loc[description]"></p>
                 </div>
                 <div class="single-egg-store-price box_relative z-index-2">
-                    <img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/store/passes/pass_welcome_title.png" v-if="productTypePass" class="pass-title-img">
+                    <img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/store/passes/pass_welcome_title.png" v-if="productTypePass" class="pass-title-img">
                     <div class="single-egg-store-info f_row align-items-center gap-micro">
                         <p v-if="!productTypePass" class="eggshop_pricebox nospace display-inline" :class="priceCls"><span class="eggshop-dollar-sign">$</span>{{ item.price }}<span class="eggshop-currency-type"> USD</span></p>
                         <button v-if="productTypeBundle || productTypePass || productTypeItem" class="btn_store ss_button btn_yolk bevel_yolk btn_sm f_row align-items-center" :class="secondaryBtnStyle" @click="onPremSecondaryBtnClicked">{{ premItemBtnText }}
@@ -12120,21 +12199,36 @@ var comp_item_grid = {
                 }
             },
             style() {
-                return this.productTypePass ? `background-image: url(img/store/passes/${this.item.sku}_bg.png); background-size: cover;` : '';
+                return this.productTypePass ? `background-image: url(${window.JSCDN}img/store/passes/${this.item.sku}_bg.png); background-size: cover;` : '';
             },
             img() {
+				console.log('Store item type:', this.item.type);
+				const imgDir = 'img/';
+				const ImgPath = window.JSCDN + imgDir || imgDir;
+				console.log('donkeyRising cdn', ImgPath);
                 switch (this.item.type) {
                     case 'item':
-                        return `img/store/items/${this.item.sku}.webp`;
+						const itemImgPath = `${ImgPath}store/items/${this.item.sku}.webp`;
+						console.log('Item image path:', itemImgPath);
+                        return itemImgPath;
                         break;
                     case 'bundle':
-                        return `img/store/bundles/${this.item.sku}.webp`;
+						const bundleImgPath = `${ImgPath}store/bundles/${this.item.sku}.webp`;
+						console.log('Bundle image path:', bundleImgPath);
+                        return bundleImgPath;
                         break;
                     case 'pass':
-                        return `img/store/passes/${this.item.sku}.png`;
+						const passImgPath = `${ImgPath}store/passes/${this.item.sku}.png`;
+						console.log('Pass image path:', passImgPath);
+                        return passImgPath;
                         break;
+					case 'currency':
+						const currencyImgPath = `${ImgPath}${this.item.sku}.webp`;
+						console.log('Currency image path:', currencyImgPath);
+						return currencyImgPath;
+						break;
                     default:
-                        return `img/${!this.isSaleEvent ? '' : 'store-black-friday/'}${this.item.sku}.webp`;
+                        return `${ImgPath}${!this.isSaleEvent ? '' : 'store-black-friday/'}${this.item.sku}.webp`;
                         break;
                 }
             },
@@ -13209,8 +13303,8 @@ var comp_egg_store = {
 		<div ref="gameUIWrapper">
 			<div ref="gameUiInner" class="paused-game-ui z-index-1 centered_x fullwidth" v-show="showScreen === screens.game">
 				<!-- <div class="factions-game-score centered_x">
-					<div class="faction-label faction-0-label f_row align-items-center justify-content-center roundme_sm box_absolute right-0 tool-tip"><span class="tool-tip-text faction-tooltip">{{ loc.factions_in_game_tip.format(loc.faction_b_title) }}</span><img class="faction-game-logo box_absolute" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/faction-egg-masters.png" alt=""><img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/ico_crossbones.svg" alt=""> <i class="display-block">{{ factionsBGameScore }}</i></div>
-					<div class="faction-label faction-1-label f_row align-items-center justify-content-center roundme_sm box_absolute left-0 tool-tip"><span class="tool-tip-text faction-tooltip">{{ loc.factions_in_game_tip.format(loc.faction_a_title) }}</span><img class="faction-game-logo box_absolute" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/faction-egg-assasins.png" alt=""><img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/ico_crossbones.svg" alt=""> <i class="display-block">{{ factionsAGameScore }}</i></div>
+					<div class="faction-label faction-0-label f_row align-items-center justify-content-center roundme_sm box_absolute right-0 tool-tip"><span class="tool-tip-text faction-tooltip">{{ loc.factions_in_game_tip.format(loc.faction_b_title) }}</span><img class="faction-game-logo box_absolute" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/faction-egg-masters.png" alt=""><img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/ico_crossbones.svg" alt=""> <i class="display-block">{{ factionsBGameScore }}</i></div>
+					<div class="faction-label faction-1-label f_row align-items-center justify-content-center roundme_sm box_absolute left-0 tool-tip"><span class="tool-tip-text faction-tooltip">{{ loc.factions_in_game_tip.format(loc.faction_a_title) }}</span><img class="faction-game-logo box_absolute" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/faction-egg-assasins.png" alt=""><img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/ico_crossbones.svg" alt=""> <i class="display-block">{{ factionsAGameScore }}</i></div>
 				</div> -->
 <!-- 
 				<div v-show="game.pauseScreen.showMenu" class="centered_x z-index-1 bg_blue3">
@@ -13270,7 +13364,7 @@ var comp_egg_store = {
 							<p id="teamScoreNum1" class="number centered_x">0</p>
 					</div>
 					<!--<div>
-							<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/spatulaIcon.webp" style="width: 3em; transform: rotate(60deg)">
+							<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/spatulaIcon.webp" style="width: 3em; transform: rotate(60deg)">
 					</div>-->
 				</div>
 
@@ -13285,7 +13379,7 @@ var comp_egg_store = {
 							</div>
 		
 							<svg id="captureIcon" viewBox="0 0 53.6 36">
-								<use href="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/crown.svg#crown" />
+								<use href="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/crown.svg#crown" />
 							</svg>
 						</div>
 					</div>
@@ -13330,7 +13424,7 @@ var comp_egg_store = {
 				<div id="captureContainer">
 					<div class="captureScoreContainer">
 						<svg class="captureCrown" viewBox="0 0 53.6 36">
-							<use href="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/crown.svg#crown" fill="var(--ss-team-red-light)" />
+							<use href="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/crown.svg#crown" fill="var(--ss-team-red-light)" />
 						</svg>
 	
 						<div id="captureScoreRed" class="captureScore">0/5</div>
@@ -13345,7 +13439,7 @@ var comp_egg_store = {
 	
 					<div class="captureScoreContainer">
 						<svg class="captureCrown" viewBox="0 0 53.6 36">
-							<use href="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/kotc/crown.svg#crown" fill="var(--ss-team-blue-light)" />
+							<use href="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/kotc/crown.svg#crown" fill="var(--ss-team-blue-light)" />
 						</svg>
 						<div id="captureScoreBlue" class="captureScore">0/5</div>
 					</div>
@@ -13362,9 +13456,9 @@ var comp_egg_store = {
 				<!-- Weapon -->
 				<div id="weaponBox">
 					<div id="grenades">
-						<img id="grenade3" class="grenade" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_grenadeEmpty.webp?v=1"/>
-						<img id="grenade2" class="grenade" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_grenadeEmpty.webp?v=1"/>
-						<img id="grenade1" class="grenade" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_grenadeEmpty.webp?v=1"/>
+						<img id="grenade3" class="grenade" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_grenadeEmpty.webp?v=1"/>
+						<img id="grenade2" class="grenade" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_grenadeEmpty.webp?v=1"/>
+						<img id="grenade1" class="grenade" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_grenadeEmpty.webp?v=1"/>
 					</div>
 					<h2 id="weaponName"></h2>
 					<h2 id="ammo" class="shadow_grey"></h2>
@@ -13394,7 +13488,7 @@ var comp_egg_store = {
 				</div>
 
 				<div id="kill-death-box" ref="killDeathBox" v-show="game.ingameNotification.showing" class="in-game-notification centered_x">
-					<img v-show="game.ingameNotification.item.type !== 2" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/ico_streak.webp" alt="" class="centered_x kill-death-box-img" />
+					<img v-show="game.ingameNotification.item.type !== 2" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/ico_streak.webp" alt="" class="centered_x kill-death-box-img" />
 					<span v-show="game.ingameNotification.item.type == 2" class="h1 text_yellow centered_x"><span>x</span>{{game.ingameNotification.item.streak}}</span>
 					<h2 v-show="game.ingameNotification.item.type == 2" class="nospace text_white">{{ loc.ks_shell_streak }}!</h2>
 					<div class="kill-death-msg" ref="killMsg" v-show="game.ingameNotification.item.type !== 2" :class="game.ingameNotification.item.style" v-html="game.ingameNotification.item.msg"></div>
@@ -14373,7 +14467,7 @@ const CompShellStreakMsg = {
                 return this.eggStoreItems.some(item => item['salePrice'] !== '' && this.ui.showCornerButtons);
             },
             upgradeBadgeUrl() {
-                return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/vip-club/vip-club-popup-emblem.webp';
+                return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/vip-club/vip-club-popup-emblem.webp';
             },
             playerSocial() {
                 return SOCIALMEDIA[this.playerActionsPopup.social.id];
@@ -14550,7 +14644,7 @@ const CompShellStreakMsg = {
 	<div data-html2canvas-ignore>
 		<div class="box_relative margins_lg screens-menu" :class="{'phb-active-bg' : bgIdx}">
 			<div v-show="uiActive">
-				<h3 class="pb-title text-center text_white display-grid grid-auto-flow-column justify-content-center gap-sm text-shadow-black-40"><img class="pb-title-img" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/photo-booth/ico_shelfieStars.svg" />Shellfie<br /> Booth <img class="pb-title-img pb-title-img-flip"src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/photo-booth/ico_shelfieStars.svg" /></h3>
+				<h3 class="pb-title text-center text_white display-grid grid-auto-flow-column justify-content-center gap-sm text-shadow-black-40"><img class="pb-title-img" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/photo-booth/ico_shelfieStars.svg" />Shellfie<br /> Booth <img class="pb-title-img pb-title-img-flip"src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/photo-booth/ico_shelfieStars.svg" /></h3>
 				<section id="photoBooth-map" class="ss_marginbottom photo-booth-map-section">
 					<ss-button-dropdown class="btn-1 fullwidth" :loc="loc" :loc-txt="mapTxt" :list-items="bgData" :selected-item="bgIdx" menuPos="right" @onListItemClick="onChangeMap"></ss-button-dropdown>
 				</section>
@@ -14811,12 +14905,12 @@ const CompPhotoboothUi = {
             <div class="vip-club--content">
                 <div class="subs-info">
                     <ul class="display-grid align-content-space-between">
-                        <li class="display-grid align-items-start"><img class="vip-club-star" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/vip-club/vip-club-popup-bullet-point-star.webp" alt="star-list-img">{{loc.p_chicken_goldfeature1}}</li>
-                        <li class="display-grid align-items-start"><img class="vip-club-star" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/vip-club/vip-club-popup-bullet-point-star.webp" alt="star-list-img"> <span v-html="loc.p_chicken_goldfeature3"></span></li>
-                        <li class="display-grid align-items-start"><img class="vip-club-star" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/vip-club/vip-club-popup-bullet-point-star.webp" alt="star-list-img"><span v-html="eggsPerKill"></span></li>
-                        <li class="display-grid align-items-start"><img class="vip-club-star" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/vip-club/vip-club-popup-bullet-point-star.webp" alt="star-list-img"> {{loc.s_popup_feature_premium_items}}</li>
-						<li class="display-grid align-items-start"><img class="vip-club-star" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/vip-club/vip-club-popup-bullet-point-star.webp" alt="star-list-img"> {{loc.s_popup_feature_premium_stamp_pos}}</li>
-						<li class="display-grid align-items-start"><img class="vip-club-star" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/vip-club/vip-club-popup-bullet-point-star.webp" alt="star-list-img"> {{loc.s_popup_and_more}}</li>
+                        <li class="display-grid align-items-start"><img class="vip-club-star" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/vip-club/vip-club-popup-bullet-point-star.webp" alt="star-list-img">{{loc.p_chicken_goldfeature1}}</li>
+                        <li class="display-grid align-items-start"><img class="vip-club-star" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/vip-club/vip-club-popup-bullet-point-star.webp" alt="star-list-img"> <span v-html="loc.p_chicken_goldfeature3"></span></li>
+                        <li class="display-grid align-items-start"><img class="vip-club-star" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/vip-club/vip-club-popup-bullet-point-star.webp" alt="star-list-img"><span v-html="eggsPerKill"></span></li>
+                        <li class="display-grid align-items-start"><img class="vip-club-star" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/vip-club/vip-club-popup-bullet-point-star.webp" alt="star-list-img"> {{loc.s_popup_feature_premium_items}}</li>
+						<li class="display-grid align-items-start"><img class="vip-club-star" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/vip-club/vip-club-popup-bullet-point-star.webp" alt="star-list-img"> {{loc.s_popup_feature_premium_stamp_pos}}</li>
+						<li class="display-grid align-items-start"><img class="vip-club-star" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/vip-club/vip-club-popup-bullet-point-star.webp" alt="star-list-img"> {{loc.s_popup_and_more}}</li>
                     </ul>
                 </div>
             </div>
@@ -15016,7 +15110,7 @@ var compVipClubTemplate = {
 		},
 
 		eggsPerKill() {
-			return this.loc.p_chicken_goldfeature2.format('<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico_goldenEgg.svg" />');
+			return this.loc.p_chicken_goldfeature2.format('<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico_goldenEgg.svg" />');
 		},
 		hasActivePass() {
 			if (!this.subs) return false;
@@ -15342,8 +15436,8 @@ var comp_game_options_popup = {
 						<header>
 							<h1 class="text-center">{{ rewardTitle }}</h1>
 						</header>
-						<img  src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/egg_pack_small.webp" />
-						<h2><img class="vertical-align-middle width_1 egg-img" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico_goldenEgg.svg" />{{notify.data.eggs}}</h2>
+						<img  src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/egg_pack_small.webp" />
+						<h2><img class="vertical-align-middle width_1 egg-img" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico_goldenEgg.svg" />{{notify.data.eggs}}</h2>
 						<p class="item-name text-center text_blue5">{{eggName(notify.data.eggs)}}</p>
 						<button v-if="bonus" @click="goToShop" class="ss_button btn_lg btn_green bevel_green f_row align-items-center justify-content-center fullwidth">{{loc.account_creation_popup_button}}</button>
 					</div>
@@ -15355,7 +15449,7 @@ var comp_game_options_popup = {
 
 <script id="notification-slider" type="text/x-template">
 	<div v-if="type" class="notify-group notify-group-items f_col justify-content-center roundme_lg box_relative" :class="clsType">
-		<img v-if="type === 'eggOrg'" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/gauge-bar/egg-org-red.png" class="centered_x factions-egg-org-logo">
+		<img v-if="type === 'eggOrg'" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/gauge-bar/egg-org-red.png" class="centered_x factions-egg-org-logo">
 		<header>
 			<h1 class="text-center" :class="headerStyle">{{ title }}</h1>
 		</header>
@@ -15395,7 +15489,7 @@ var comp_game_options_popup = {
 			<h3 class="text_blue5 text-center nospace" v-html="chlgName(i[1])"></h3>
 			<p class="text-center text_blue5 nospace" v-html="chlgDesc(i[1])"></p>
 			<div class="account_eggs roundme_sm clickme f_row justify-content-center ss_margintop_lg ss_marginbottom_lg">
-				<span class="egg_count text-center text-shadow-black-40"><img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico_goldenEgg.svg" class="egg_icon"> {{ i[2] }}</span>
+				<span class="egg_count text-center text-shadow-black-40"><img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico_goldenEgg.svg" class="egg_icon"> {{ i[2] }}</span>
 			</div>
 		</div>
 	</div>
@@ -15438,8 +15532,8 @@ var comp_game_options_popup = {
 	};
 </script><script id="notification-currency" type="text/x-template">
 	<div class="egg-give-stuff">
-			<img  src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/egg_pack_small.webp" />
-			<h2><img class="vertical-align-middle width_1 egg-img" src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico_goldenEgg.svg" />{{eggs}}</h2>
+			<img  src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/egg_pack_small.webp" />
+			<h2><img class="vertical-align-middle width_1 egg-img" src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico_goldenEgg.svg" />{{eggs}}</h2>
 		</div>
 </script>
 
@@ -16387,7 +16481,7 @@ const NotifiSlider = {
                 },
 
                 showHistoryChangelogPopup() {
-                    fetch('https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/changelog/oldChangelog.json', {
+                    fetch('https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/changelog/oldChangelog.json', {
                             cache: "no-cache"
                         })
                         .then(response => response.json())
@@ -17941,14 +18035,14 @@ const NotifiSlider = {
                 },
                 chwChickSrc() {
                     if (this.chw.limitReached || this.isChicknWinnerError) {
-                        // return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_daily_limit.svg';
+                        // return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_daily_limit.svg';
                         return this.chw.imgs.limit;
                     } else {
                         if (!this.chw.ready) {
-                            // return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_sleep.svg';
+                            // return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_sleep.svg';
                             return this.chw.imgs.sleep;
                         } else {
-                            // return 'https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/chicken-nugget/chickLoop_speak.svg';
+                            // return 'https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/chicken-nugget/chickLoop_speak.svg';
                             return this.chw.imgs.speak;
                         }
                     }
@@ -18025,7 +18119,7 @@ const NotifiSlider = {
                     }
                 },
                 anonPopupContent() {
-                    return this.loc.account_anon_warn_paragraph_block.format('<img src="https://cdn.jsdelivr.net/gh/shellbros/mathlete@1f4ee95/img/svg/ico_goldenEgg.svg" class="egg_icon" />');
+                    return this.loc.account_anon_warn_paragraph_block.format('<img src="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@0bfec26/img/svg/ico_goldenEgg.svg" class="egg_icon" />');
                 },
                 chwShowBtn() {
                     //chw.ready && !chw.adBlockDetect"

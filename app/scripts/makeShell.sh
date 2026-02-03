@@ -9,7 +9,7 @@ fi
 FILE="../../index.html"
 
 # set var for cdn
-CDN="https://cdn.jsdelivr.net/gh/shellbros/mathlete@$1/"
+CDN="https://cdn.jsdelivr.net/gh/shellbros/shellbros.github.io@$1/"
 
 # 1. Inject JSCDN and checker script tags, or update the hash if already present
 if ! grep -q '<script>window\.JSCDN=' "$FILE"; then
